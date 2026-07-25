@@ -1,5 +1,4 @@
 import streamlit as st
-# i have committed saanvi
 
 # ------------------------------
 # Set up the page
@@ -16,7 +15,7 @@ st.set_page_config(
 st.markdown("""
 <style>
 .main {
-    background-color: #f8f9ff;
+    background-color: #800080;
 }
 h1 {
     color: #6A0DAD;
@@ -34,77 +33,69 @@ h2, h3 {
 # ------------------------------
 # App title and description
 # ------------------------------
-st.title("🧠 Clariti")
-st.subheader("Cognitive Wellness Dashboard")
+st.markdown("<div class='main-title'>🧠 Clariti</div>", unsafe_allow_html=True)
 
-st.write("""
-Welcome to **Clariti**!
+st.markdown("<div class='subtitle'>Helping Reduce Cognitive Decline Through Healthy Daily Habits</div>", unsafe_allow_html=True)
 
-Our goal is to help people build healthy daily habits that may reduce the risk
-of cognitive decline by tracking important wellness activities.
-""")
+st.write("")
+st.sidebar.title("🧠 Clariti")
 
+page = st.sidebar.radio(
+    "Navigation",
+    [
+        "🏠 Dashboard",
+        "🏃 Exercise",
+        "😴 Sleep",
+        "🧩 Brain Games",
+        "👨‍⚕️ Doctor",
+        "ℹ️ About"
+    ]
+)
+st.header("📊 Today's Dashboard")
+
+col1,col2,col3,col4 = st.columns(4)
+
+with col1:
+    st.metric("👣 Steps", "5000")
+
+with col2:
+    st.metric("😴 Sleep","8 hrs")
+
+with col3:
+    st.metric("🧩 Games","1")
+
+with col4:
+    st.metric("⭐ Goal","Healthy")
 st.divider()
 
-# ------------------------------
-# Exercise tracking section
-# ------------------------------
-st.header("🏃 Exercise")
+st.header("✅ Daily Goals")
 
-steps = st.number_input(
-    "How many steps did you take today?",
-    min_value=0,
-    max_value=50000,
-    value=5000
-)
+st.checkbox("Walk 8,000 Steps")
 
-exercise_minutes = st.slider(
-    "Minutes of exercise",
-    0,
-    180,
-    30
-)
+st.checkbox("Exercise 30 Minutes")
 
-st.success(f"You recorded {steps} steps and {exercise_minutes} minutes of exercise.")
+st.checkbox("Sleep 8 Hours")
 
+st.checkbox("Play a Brain Game")
+
+st.checkbox("Drink Enough Water")
 st.divider()
 
-# ------------------------------
-# Sleep tracking section
-# ------------------------------
-st.header("😴 Sleep")
+st.markdown("""
+<div class="tip">
 
-sleep_hours = st.slider(
-    "Hours of sleep last night",
-    0,
-    12,
-    8
-)
+### 💡 Brain Health Tip
 
-if sleep_hours >= 8:
-    st.success("Great! You got a healthy amount of sleep.")
-elif sleep_hours >= 6:
-    st.warning("Not bad. Try to get a little more rest.")
-else:
-    st.error("You may need more sleep for better brain health.")
+Walking for 20–30 minutes every day may help improve memory,
+support healthy blood flow to the brain, and reduce the risk of cognitive decline.
 
+</div>
+""", unsafe_allow_html=True)
 st.divider()
 
-# ------------------------------
-# Brain games section
-# ------------------------------
-st.header("🧩 Brain Activity")
+st.success("🔥 Every healthy habit today helps protect your brain tomorrow.")
 
-games = st.slider(
-    "How many brain games did you play today?",
-    0,
-    10,
-    1
-)
-
-st.write(f"Brain games completed today: **{games}**")
-
-st.divider()
+st.balloons()
 
 # ------------------------------
 # Doctor referral section
@@ -124,10 +115,14 @@ Early evaluation can be very helpful.
 st.divider()
 
 # ------------------------------
-# Daily wellness score
+# Daily Wellness Score Dashboard
 # ------------------------------
+
+st.divider()
+
 st.header("⭐ Daily Wellness Score")
 
+# Calculate score
 score = 0
 
 if steps >= 8000:
@@ -142,22 +137,69 @@ if sleep_hours >= 8:
 if games >= 1:
     score += 25
 
+# Dashboard cards
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.metric("🏆 Wellness Score", f"{score}/100")
+
+with col2:
+    if score >= 75:
+        st.metric("🎯 Goal", "Excellent")
+    elif score >= 50:
+        st.metric("🎯 Goal", "Good")
+    else:
+        st.metric("🎯 Goal", "Needs Work")
+
+with col3:
+    completed = score // 25
+    st.metric("✅ Goals Completed", f"{completed}/4")
+
+st.write("### Overall Progress")
 st.progress(score / 100)
 
-st.metric("Today's Wellness Score", f"{score}/100")
-
+# Personalized feedback
 if score == 100:
-    st.success("Excellent job! You completed all wellness goals today.")
+    st.success("🌟 Amazing! You completed every wellness goal today.")
 elif score >= 75:
-    st.success("You're doing well! Keep it up.")
+    st.success("🎉 Great job! Your brain health habits are on track.")
 elif score >= 50:
-    st.warning("Good start! Try to improve one or two habits tomorrow.")
+    st.warning("👍 Nice work! Try completing one more goal today.")
 else:
-    st.error("Let's work on building healthier daily habits.")
+    st.error("💜 Every healthy choice matters. Let's improve together!")
 
 st.divider()
+
+# Daily Goal Checklist
+st.subheader("📋 Today's Checklist")
+
+goal1 = "✅" if steps >= 8000 else "⬜"
+goal2 = "✅" if exercise_minutes >= 30 else "⬜"
+goal3 = "✅" if sleep_hours >= 8 else "⬜"
+goal4 = "✅" if games >= 1 else "⬜"
+
+st.write(f"{goal1} Walk at least **8,000 steps**")
+st.write(f"{goal2} Exercise for **30 minutes**")
+st.write(f"{goal3} Get **8 hours of sleep**")
+st.write(f"{goal4} Complete **1 brain game**")
+
+st.divider()
+
+# Brain Health Tip
+st.info(
+# ------------------------------
+# Doctor referral section
+# ------------------------------
+    "🧠 **Brain Health Tip:** Regular exercise, quality sleep, and mentally stimulating activities can help support long-term cognitive health."
+)
 
 # ------------------------------
 # Footer
 # ------------------------------
-st.caption("Clariti • Helping reduce cognitive decline through healthy daily habits.")
+st.divider()
+
+st.caption("🧠 Clariti")
+
+st.caption("Helping people reduce cognitive decline through healthy daily habits.")
+
+st.caption("Sprint 1 • Cognitive Wellness Dashboard")
