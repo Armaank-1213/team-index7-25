@@ -51,30 +51,68 @@ page = st.sidebar.radio(
         "ℹ️ About"
     ]
 )
+
+# ------------------------------
+# Daily Inputs
+# ------------------------------
+
+st.header("📝 Today's Wellness Check-In")
+
+steps = st.number_input(
+    "👣 Steps Walked Today",
+    min_value=0,
+    max_value=50000,
+    value=5000,
+    step=100
+)
+
+exercise_minutes = st.slider(
+    "🏃 Minutes Exercised",
+    0,
+    180,
+    30
+)
+
+sleep_hours = st.slider(
+    "😴 Hours of Sleep",
+    0.0,
+    12.0,
+    8.0,
+    0.5
+)
+
+games = st.number_input(
+    "🧩 Brain Games Completed",
+    min_value=0,
+    max_value=20,
+    value=1
+)
+
+st.divider()
 st.header("📊 Today's Dashboard")
 
 col1,col2,col3,col4 = st.columns(4)
 
 with col1:
-    st.metric("👣 Steps", "5000")
+    st.metric("👣 Steps", f"{steps}")
 
 with col2:
-    st.metric("😴 Sleep","8 hrs")
+    st.metric("😴 Sleep", f"{sleep_hours} hrs")
 
 with col3:
-    st.metric("🧩 Games","1")
+    st.metric("🧩 Games", f"{games}")
 
 with col4:
-    st.metric("⭐ Goal","Healthy")
+    st.metric("⭐ Goal", "Healthy")
 st.divider()
 
 st.header("✅ Daily Goals")
 
-st.checkbox("Walk 8,000 Steps")
+st.checkbox("Walk 8,000 Steps", value=steps >= 8000)
 
-st.checkbox("Exercise 30 Minutes")
+st.checkbox("Exercise 30 Minutes", value=exercise_minutes >= 30)
 
-st.checkbox("Sleep 8 Hours")
+st.checkbox("Sleep 8 Hours", value=sleep_hours >= 8)
 
 st.checkbox("Play a Brain Game")
 
@@ -187,9 +225,6 @@ st.divider()
 
 # Brain Health Tip
 st.info(
-# ------------------------------
-# Doctor referral section
-# ------------------------------
     "🧠 **Brain Health Tip:** Regular exercise, quality sleep, and mentally stimulating activities can help support long-term cognitive health."
 )
 
