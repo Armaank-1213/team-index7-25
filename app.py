@@ -1,39 +1,108 @@
+import random
+from pathlib import Path
+
 import streamlit as st
+
+ASSETS_DIR = Path(__file__).parent / "assets"
+LOGO_PATH = ASSETS_DIR / "clariti_logo.png"
 
 # ------------------------------
 # Page setup
 # ------------------------------
 st.set_page_config(
     page_title="Clariti - Cognitive Wellness Dashboard",
-    page_icon="🧠",
+    page_icon=str(LOGO_PATH) if LOGO_PATH.exists() else "🧠",
     layout="wide"
 )
 
+# ------------------------------
+# Blue / Purple theme (matches Clariti logo)
+# ------------------------------
 st.markdown("""
 <style>
-.main {
-    background-color: #800080;
+:root {
+    --clariti-navy: #1B2A5B;
+    --clariti-indigo: #3A2E8C;
+    --clariti-purple: #7B3FE4;
+    --clariti-light-purple: #A78BFA;
+    --clariti-lavender: #EDE9FE;
+    --clariti-bg: #F4F2FF;
 }
+
+.stApp {
+    background: linear-gradient(180deg, var(--clariti-bg) 0%, #FFFFFF 45%);
+}
+
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, var(--clariti-navy) 0%, var(--clariti-indigo) 55%, var(--clariti-purple) 100%);
+}
+
+section[data-testid="stSidebar"] * {
+    color: #F4F2FF !important;
+}
+
+section[data-testid="stSidebar"] .stSlider label,
+section[data-testid="stSidebar"] .stCheckbox label {
+    color: #EDE9FE !important;
+}
+
 h1 {
-    color: #6A0DAD;
+    color: var(--clariti-indigo);
 }
 h2, h3 {
-    color: #5A5A5A;
+    color: var(--clariti-purple);
 }
+
 .stButton>button {
-    background-color: #FFD54F;
-    color: black;
+    background: linear-gradient(90deg, var(--clariti-indigo) 0%, var(--clariti-purple) 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+}
+.stButton>button:hover {
+    background: linear-gradient(90deg, var(--clariti-purple) 0%, var(--clariti-light-purple) 100%);
+    color: white;
+}
+
+div[data-testid="stMetric"] {
+    background-color: var(--clariti-lavender);
+    border-radius: 12px;
+    padding: 10px;
+    border: 1px solid var(--clariti-light-purple);
+}
+
+.stProgress > div > div > div > div {
+    background: linear-gradient(90deg, var(--clariti-indigo), var(--clariti-purple));
+}
+
+/* Memory game cards */
+.mm-card button {
+    font-size: 28px !important;
+    height: 70px;
 }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🧠 Clariti")
-st.caption("Helping Reduce Cognitive Decline Through Healthy Daily Habits")
+# ------------------------------
+# Header
+# ------------------------------
+header_col1, header_col2 = st.columns([1, 6])
+with header_col1:
+    if LOGO_PATH.exists():
+        st.image(str(LOGO_PATH), width=90)
+with header_col2:
+    st.title("Clariti")
+    st.caption("Your beacon for cognitive wellness")
 
 # ------------------------------
 # Sidebar navigation
 # ------------------------------
-st.sidebar.title("🧠 Clariti")
+if LOGO_PATH.exists():
+    st.sidebar.image(str(LOGO_PATH), use_container_width=True)
+else:
+    st.sidebar.title("🧠 Clariti")
+
 page = st.sidebar.radio(
     "Navigation",
     [
@@ -103,6 +172,90 @@ difficulty concentrating, or other concerns.
 
 Early evaluation can be very helpful.
 """)
+
+
+# ------------------------------
+# 🧩 Memory Matching Game
+# ------------------------------
+MEMORY_EMOJIS = ["🧠", "💡", "🌙", "⭐", "💧", "🏃", "📚", "🧩"]
+
+
+def new_memory_game(pairs=8):
+    symbols = MEMORY_EMOJIS[:pairs] * 2
+    random.shuffle(symbols)
+    st.session_state.mm_cards = symbols
+    st.session_state.mm_matched = set()
+    st.session_state.mm_choice_one = None
+    st.session_state.mm_choice_two = None
+    st.session_state.mm_moves = 0
+    st.session_state.mm_won = False
+
+
+def select_card(idx):
+    if st.session_state.mm_choice_one is not None and st.session_state.mm_choice_two is not None:
+        return
+    if idx in st.session_state.mm_matched or idx == st.session_state.mm_choice_one:
+        return
+    if st.session_state.mm_choice_one is None:
+        st.session_state.mm_choice_one = idx
+    elif st.session_state.mm_choice_two is None:
+        st.session_state.mm_choice_two = idx
+
+
+def memory_matching_game():
+    if "mm_cards" not in st.session_state:
+        new_memory_game()
+
+    # Resolve a completed pair from the previous click
+    if st.session_state.mm_choice_one is not None and st.session_state.mm_choice_two is not None:
+        c1, c2 = st.session_state.mm_choice_one, st.session_state.mm_choice_two
+        st.session_state.mm_moves += 1
+        if st.session_state.mm_cards[c1] == st.session_state.mm_cards[c2]:
+            st.session_state.mm_matched.add(c1)
+            st.session_state.mm_matched.add(c2)
+        st.session_state.mm_choice_one = None
+        st.session_state.mm_choice_two = None
+        if len(st.session_state.mm_matched) == len(st.session_state.mm_cards):
+            st.session_state.mm_won = True
+
+    top_col1, top_col2, top_col3 = st.columns([2, 2, 2])
+    top_col1.metric("🔁 Moves", st.session_state.mm_moves)
+    top_col2.metric("✅ Pairs Found", f"{len(st.session_state.mm_matched) // 2} / {len(st.session_state.mm_cards) // 2}")
+    if top_col3.button("🔄 New Game"):
+        new_memory_game()
+        st.rerun()
+
+    st.write("")
+
+    cols_per_row = 4
+    cards = st.session_state.mm_cards
+    for row_start in range(0, len(cards), cols_per_row):
+        row_cols = st.columns(cols_per_row)
+        for offset, idx in enumerate(range(row_start, min(row_start + cols_per_row, len(cards)))):
+            revealed = (
+                idx in st.session_state.mm_matched
+                or idx == st.session_state.mm_choice_one
+                or idx == st.session_state.mm_choice_two
+            )
+            label = cards[idx] if revealed else "❓"
+            with row_cols[offset]:
+                st.markdown('<div class="mm-card">', unsafe_allow_html=True)
+                st.button(
+                    label,
+                    key=f"mm_card_{idx}",
+                    on_click=select_card,
+                    args=(idx,),
+                    disabled=idx in st.session_state.mm_matched,
+                    use_container_width=True,
+                )
+                st.markdown('</div>', unsafe_allow_html=True)
+
+    if st.session_state.mm_won:
+        st.balloons()
+        st.success(
+            f"🎉 You matched every pair in {st.session_state.mm_moves} moves! "
+            "Update the '🧩 Brain Games Completed' slider in the sidebar to log it."
+        )
 
 
 # ------------------------------
@@ -181,6 +334,11 @@ elif page == "🧩 Brain Games":
         "and reading may help keep your brain sharp over time."
     )
 
+    st.divider()
+    st.subheader("🧠 Memory Match")
+    st.caption("Flip two cards at a time and find every matching pair.")
+    memory_matching_game()
+
 # ------------------------------
 # 👨‍⚕️ Doctor
 # ------------------------------
@@ -205,6 +363,7 @@ elif page == "ℹ️ About":
 # Footer
 # ------------------------------
 st.divider()
-st.caption("🧠 Clariti")
-st.caption("Helping people reduce cognitive decline through healthy daily habits.")
+if LOGO_PATH.exists():
+    st.image(str(LOGO_PATH), width=50)
+st.caption("Clariti — Your beacon for cognitive wellness")
 st.caption("Sprint 1 • Cognitive Wellness Dashboard")
