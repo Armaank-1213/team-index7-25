@@ -443,6 +443,27 @@ def goal_checklist():
             unsafe_allow_html=True
         )
 
+    for text, completed in goals:
+        icon = "✅" if completed else "⬜"
+
+        st.markdown(
+            f"""
+            <div style="
+                background:#F9FAFF;
+                border:1px solid #E5E7F2;
+                border-radius:10px;
+                padding:10px 14px;
+                margin-bottom:8px;
+                font-weight:600;
+                color:#1B1F30;
+                font-size:16px;
+            ">
+                {icon} {text}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
 
 def doctor_expander():
 
@@ -657,16 +678,13 @@ def memory_matching_game():
 # Dashboard
 # ------------------------------
 if page == "Dashboard":
-
     with st.container(key="card_dash_snapshot"):
         st.subheader("Today's Snapshot")
         col1, col2, col3, col4 = st.columns(4)
-
         col1.metric("Steps", steps)
         col2.metric("Sleep", f"{sleep_hours} hrs")
         col3.metric("Games", games)
         col4.metric("Score", f"{score}/100")
-
         st.progress(score / 100)
 
     with st.container(key="card_dash_goals"):
@@ -676,57 +694,14 @@ if page == "Dashboard":
     with st.container(key="card_dash_feedback"):
         st.subheader("Feedback")
         feedback_message(score)
-
         st.info(
-            "**Brain Health Tip:** Regular exercise, quality sleep, "
-            "meditation, and mentally stimulating activities can help "
-            "support long-term cognitive health."
+            "**Brain Health Tip:** Regular exercise, quality sleep, and mentally "
+            "stimulating activities can help support long-term cognitive health."
         )
 
     with st.container(key="card_dash_doctor"):
         doctor_expander()
 
-
-# ------------------------------
-# Exercise
-# ------------------------------
-elif page == "Exercise":
-    ...
-
-
-# ------------------------------
-# Sleep
-# ------------------------------
-elif page == "Sleep":
-    ...
-
-
-# ------------------------------
-# Meditation
-# ------------------------------
-elif page == "Meditation":
-    ...
-
-
-# ------------------------------
-# Brain Games
-# ------------------------------
-elif page == "Brain Games":
-    ...
-
-
-# ------------------------------
-# Doctor
-# ------------------------------
-elif page == "Doctor":
-    ...
-
-
-# ------------------------------
-# About
-# ------------------------------
-elif page == "About":
-    ...
 # ------------------------------
 # Exercise
 # ------------------------------
