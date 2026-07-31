@@ -316,6 +316,7 @@ with st.sidebar.container(key="nav_container"):
             "Dashboard",
             "Exercise",
             "Sleep",
+            "Meditation",
             "Brain Games",
             "Doctor",
             "About"
