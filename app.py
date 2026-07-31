@@ -222,11 +222,37 @@ div[data-testid="stMetric"] {
 }
 
 
-/* ---------- Memory Game ---------- */
+/* ---------- Memory Game Cards ---------- */
 div[class*="st-key-mm_grid_container"] .stButton > button {
     font-size: 2.3rem;
     min-height: 96px;
+    height: 96px;
     border-radius: 14px;
+    background: #FFFFFF;
+    color: #1B1F30;
+    border: 2px solid #E5E7F2;
+    box-shadow: 0 2px 5px rgba(16,24,64,0.08);
+    font-weight: 700;
+}
+
+div[class*="st-key-mm_grid_container"] .stButton > button:hover {
+    background: #F5F6FB;
+    border-color: #7C6AE8;
+}
+
+/* Active flipped card */
+div[class*="st-key-mm_grid_container"] button[kind="primary"] {
+    background: #FFF4DA !important;
+    color: #8A5B00 !important;
+    border: 2px solid #F5A623 !important;
+}
+
+/* Disabled matched cards */
+div[class*="st-key-mm_grid_container"] .stButton > button:disabled {
+    background: #FFFFFF;
+    color: #1B1F30;
+    opacity: 1;
+    border: 2px solid #E5E7F2;
 }
 
 
