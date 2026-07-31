@@ -567,34 +567,166 @@ if page == "Dashboard":
 # Exercise
 # ------------------------------
 elif page == "Exercise":
+
     with st.container(key="card_exercise"):
-        st.subheader("Exercise")
+        st.subheader("Exercise & Brain Health")
+
         col1, col2 = st.columns(2)
-        col1.metric("Steps", steps)
-        col2.metric("Minutes Exercised", exercise_minutes)
 
-        st.checkbox("Walk 8,000 Steps", value=steps >= 8000, disabled=True)
-        st.checkbox("Exercise 30 Minutes", value=exercise_minutes >= 30, disabled=True)
+        with col1:
+            st.metric(
+                "Steps Today",
+                "{:,}".format(steps)
+            )
 
-        st.info(
-            "**Tip:** Walking for 20-30 minutes every day may help improve memory, "
-            "support healthy blood flow to the brain, and reduce the risk of cognitive decline."
+        with col2:
+            st.metric(
+                "Exercise Time",
+                f"{exercise_minutes} min"
+            )
+
+        st.progress(min(steps / 8000, 1.0))
+
+        if steps >= 8000 and exercise_minutes >= 30:
+            st.success(
+                "Great work! You reached today's exercise goals."
+            )
+        elif steps >= 8000 or exercise_minutes >= 30:
+            st.info(
+                "You're making progress. Try completing the other exercise goal."
+            )
+        else:
+            st.warning(
+                "A little movement today can help support brain health."
+            )
+
+
+    with st.container(key="card_exercise_goals"):
+        st.subheader("Exercise Goals")
+
+        goals = [
+            ("Walk 8,000 Steps", steps >= 8000),
+            ("Exercise 30 Minutes", exercise_minutes >= 30)
+        ]
+
+        for goal, completed in goals:
+            icon = "✅" if completed else "⬜"
+
+            st.markdown(
+                f"""
+                <div style="
+                    background:#F9FAFF;
+                    border:1px solid #E5E7F2;
+                    border-radius:10px;
+                    padding:12px;
+                    margin-bottom:8px;
+                    font-weight:600;
+                ">
+                    {icon} {goal}
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+
+    with st.container(key="card_exercise_brain"):
+        st.subheader("Why Exercise Helps Your Brain")
+
+        st.write(
+            """
+            Regular physical activity supports cognitive health by increasing
+            blood flow to the brain and supporting the growth and connection of
+            brain cells.
+
+            Exercise may help improve:
+            """
         )
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.info("🧠 Memory\n\nSupports learning and recall.")
+        col2.info("🎯 Focus\n\nHelps attention and concentration.")
+        col3.info("😊 Mood\n\nCan reduce stress and improve mental well-being.")
+
+
 
 # ------------------------------
 # Sleep
 # ------------------------------
 elif page == "Sleep":
-    with st.container(key="card_sleep"):
-        st.subheader("Sleep")
-        st.metric("Hours Slept", f"{sleep_hours} hrs")
-        st.checkbox("Sleep 8 Hours", value=sleep_hours >= 8, disabled=True)
 
-        st.info(
-            "**Tip:** Consistent, quality sleep helps the brain clear waste products "
-            "and consolidate memories from the day."
+    with st.container(key="card_sleep"):
+        st.subheader("Sleep & Brain Recovery")
+
+        st.metric(
+            "Hours Slept",
+            f"{sleep_hours} hrs"
         )
 
+        st.progress(min(sleep_hours / 8, 1.0))
+
+
+        if sleep_hours >= 8:
+            st.success(
+                "Excellent! You reached the recommended sleep goal."
+            )
+        elif sleep_hours >= 6:
+            st.info(
+                "Good progress. Try getting closer to 8 hours."
+            )
+        else:
+            st.warning(
+                "Your brain benefits from more consistent sleep."
+            )
+
+
+    with st.container(key="card_sleep_goal"):
+        st.subheader("Sleep Goal")
+
+        icon = "✅" if sleep_hours >= 8 else "⬜"
+
+        st.markdown(
+            f"""
+            <div style="
+                background:#F9FAFF;
+                border:1px solid #E5E7F2;
+                border-radius:10px;
+                padding:12px;
+                font-weight:600;
+            ">
+                {icon} Sleep 8 Hours
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+
+    with st.container(key="card_sleep_brain"):
+        st.subheader("Why Sleep Matters for the Brain")
+
+        st.write(
+            """
+            Sleep is when the brain performs important maintenance tasks.
+            During quality sleep, the brain strengthens memories, processes
+            information from the day, and supports emotional regulation.
+
+            Getting enough sleep may help with:
+            """
+        )
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.info(
+            "🧠 Memory\n\nHelps store and organize new information."
+        )
+
+        col2.info(
+            "⚡ Energy\n\nImproves focus and mental performance."
+        )
+
+        col3.info(
+            "🛡️ Brain Health\n\nSupports long-term cognitive wellness."
+        )
 # ------------------------------
 # Brain Games
 # ------------------------------
