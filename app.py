@@ -698,12 +698,6 @@ if page == "Dashboard":
         st.subheader("Feedback")
         feedback_message(score)
 
-        st.info(
-            "**Brain Health Tip:** Regular exercise, quality sleep, "
-            "meditation, and mentally stimulating activities can help "
-            "support long-term cognitive health."
-        )
-
     with st.container(key="card_dash_doctor"):
         doctor_expander()
 
