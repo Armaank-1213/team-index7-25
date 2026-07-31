@@ -421,10 +421,7 @@ def goal_checklist():
 
     for text, completed in goals:
 
-        if completed:
-            icon = "✅"
-        else:
-            icon = "⬜"
+        icon = "✅" if completed else "⬜"
 
         st.markdown(
             f"""
@@ -436,26 +433,6 @@ def goal_checklist():
                 margin-bottom:8px;
                 font-weight:600;
                 color:#1B1F30;
-            ">
-                {icon} {text}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    for text, completed in goals:
-        icon = "✅" if completed else "⬜"
-
-        st.markdown(
-            f"""
-            <div style="
-                background:#F9FAFF;
-                border:1px solid #E5E7F2;
-                border-radius:10px;
-                padding:10px 14px;
-                margin-bottom:8px;
-                font-weight:600;
-                color:#1B1F30;
                 font-size:16px;
             ">
                 {icon} {text}
@@ -463,8 +440,6 @@ def goal_checklist():
             """,
             unsafe_allow_html=True
         )
-
-
 def doctor_expander():
 
     st.subheader("When Should You Consider Talking to a Doctor?")
