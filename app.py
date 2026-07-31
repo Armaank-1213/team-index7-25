@@ -329,26 +329,71 @@ with st.sidebar.container(key="nav_container"):
 st.sidebar.divider()
 st.sidebar.header("Today's Check-In")
 
-steps = st.sidebar.slider("Steps Walked", 0, 20000, 5000, 100)
-exercise_minutes = st.sidebar.slider("Exercise (minutes)", 0, 180, 30, 5)
-sleep_hours = st.sidebar.slider("Hours Slept", 0.0, 12.0, 8.0, 0.5)
-games = st.sidebar.slider("Brain Games Completed", 0, 10, 1)
-water = st.sidebar.checkbox("I drank enough water today")
+steps = st.sidebar.slider(
+    "Steps Walked",
+    0,
+    20000,
+    5000,
+    100
+)
+
+exercise_minutes = st.sidebar.slider(
+    "Exercise (minutes)",
+    0,
+    180,
+    30,
+    5
+)
+
+sleep_hours = st.sidebar.slider(
+    "Hours Slept",
+    0.0,
+    12.0,
+    8.0,
+    0.5
+)
+
+meditation_minutes = st.sidebar.slider(
+    "Meditation (minutes)",
+    0,
+    60,
+    5,
+    5
+)
+
+games = st.sidebar.slider(
+    "Brain Games Completed",
+    0,
+    10,
+    1
+)
+
+water = st.sidebar.checkbox(
+    "I drank enough water today"
+)
 
 # ------------------------------
-# Wellness score (calculated once, used everywhere)
+# Wellness score
 # ------------------------------
 score = 0
+
 if steps >= 8000:
     score += 20
+
 if exercise_minutes >= 30:
     score += 20
+
 if sleep_hours >= 8:
     score += 20
+
+if meditation_minutes >= 10:
+    score += 15
+
 if games >= 1:
-    score += 20
+    score += 15
+
 if water:
-    score += 20
+    score += 10
 
 
 def feedback_message(score):
@@ -363,13 +408,39 @@ def feedback_message(score):
 
 
 def goal_checklist():
+
     goals = [
         ("Walk 8,000 Steps", steps >= 8000),
         ("Exercise 30 Minutes", exercise_minutes >= 30),
         ("Sleep 8 Hours", sleep_hours >= 8),
+        ("Meditate 10 Minutes", meditation_minutes >= 10),
         ("Complete a Brain Game", games >= 1),
         ("Drink Enough Water", water)
     ]
+
+    for text, completed in goals:
+
+        if completed:
+            icon = "✅"
+        else:
+            icon = "⬜"
+
+        st.markdown(
+            f"""
+            <div style="
+                background:#F9FAFF;
+                border:1px solid #E5E7F2;
+                border-radius:10px;
+                padding:12px;
+                margin-bottom:8px;
+                font-weight:600;
+                color:#1B1F30;
+            ">
+                {icon} {text}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
     for text, completed in goals:
         icon = "✅" if completed else "⬜"
