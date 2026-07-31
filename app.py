@@ -290,135 +290,12 @@ with st.sidebar.container(key="nav_container"):
             "Dashboard",
             "Exercise",
             "Sleep",
-            "Meditation",
             "Brain Games",
             "Doctor",
             "About"
         ],
         label_visibility="collapsed",
     )
-
-# ------------------------------
-# Daily inputs
-# ------------------------------
-st.sidebar.divider()
-st.sidebar.header("Today's Check-In")
-
-steps = st.sidebar.slider(
-    "Steps Walked",
-    0,
-    20000,
-    5000,
-    100
-)
-
-exercise_minutes = st.sidebar.slider(
-    "Exercise (minutes)",
-    0,
-    180,
-    30,
-    5
-)
-
-sleep_hours = st.sidebar.slider(
-    "Hours Slept",
-    0.0,
-    12.0,
-    8.0,
-    0.5
-)
-
-meditation_minutes = st.sidebar.slider(
-    "Meditation (minutes)",
-    0,
-    60,
-    5,
-    5
-)
-
-games = st.sidebar.slider(
-    "Brain Games Completed",
-    0,
-    10,
-    1
-)
-
-water = st.sidebar.checkbox(
-    "I drank enough water today"
-)
-
-
-# ------------------------------
-# Wellness score
-# ------------------------------
-score = 0
-
-if steps >= 8000:
-    score += 20
-
-if exercise_minutes >= 30:
-    score += 20
-
-if sleep_hours >= 8:
-    score += 20
-
-if meditation_minutes >= 10:
-    score += 20
-
-if games >= 1:
-    score += 10
-
-if water:
-    score += 10
-
-
-# ------------------------------
-# Feedback
-# ------------------------------
-def feedback_message(score):
-    if score == 100:
-        st.success("Perfect! You completed every wellness goal today.")
-    elif score >= 80:
-        st.success("Great work! Keep building healthy habits.")
-    elif score >= 60:
-        st.warning("You're doing well. Try completing one more goal today.")
-    else:
-        st.error("Small healthy habits each day can make a difference.")
-
-
-# ------------------------------
-# Goal Checklist
-# ------------------------------
-def goal_checklist():
-    goals = [
-        ("Walk 8,000 Steps", steps >= 8000),
-        ("Exercise 30 Minutes", exercise_minutes >= 30),
-        ("Sleep 8 Hours", sleep_hours >= 8),
-        ("Meditate 10 Minutes", meditation_minutes >= 10),
-        ("Complete a Brain Game", games >= 1),
-        ("Drink Enough Water", water)
-    ]
-
-    for text, completed in goals:
-        icon = "✅" if completed else "⬜"
-
-        st.markdown(
-            f"""
-            <div style="
-                background:#F9FAFF;
-                border:1px solid #E5E7F2;
-                border-radius:10px;
-                padding:10px 14px;
-                margin-bottom:8px;
-                font-weight:600;
-                color:#1B1F30;
-                font-size:16px;
-            ">
-                {icon} {text}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
 
 # ------------------------------
 # Daily inputs (kept in session_state so every page sees the same values)
@@ -501,38 +378,7 @@ difficulty concentrating, or other concerns.
 Early evaluation can be very helpful.
 """)
 
-# ------------------------------
-# Meditation
-# ------------------------------
-elif page == "Meditation":
 
-    with st.container(key="card_meditation"):
-        st.subheader("Meditation")
-
-        st.metric(
-            "Meditation Time",
-            f"{meditation_minutes} minutes"
-        )
-
-        st.progress(min(meditation_minutes / 20, 1.0))
-
-        if meditation_minutes >= 10:
-            st.success(
-                "Great job! You completed your meditation goal."
-            )
-        else:
-            st.info(
-                "Try reaching 10 minutes of meditation for today's goal."
-            )
-
-        st.write(
-            "Meditation can support relaxation, focus, and stress management."
-        )
-
-        st.info(
-            "**Tip:** Focus on slow breathing and staying present. "
-            "Even short sessions can help create a healthy routine."
-        )
 # ------------------------------
 # Memory Matching Game
 # ------------------------------
@@ -722,40 +568,7 @@ elif page == "Sleep":
             "**Tip:** Consistent, quality sleep helps the brain clear waste products "
             "and consolidate memories from the day."
         )
-# ------------------------------
-# Meditation
-# ------------------------------
-elif page == "Meditation":
-    with st.container(key="card_meditation"):
-        st.subheader("Meditation")
 
-        st.write(
-            "Meditation can help promote relaxation, focus, and stress management."
-        )
-
-        meditation_time = st.slider(
-            "Meditation Minutes",
-            0,
-            60,
-            5,
-            5
-        )
-
-        if meditation_time >= 10:
-            st.success("Great job! You completed a mindful meditation session.")
-        elif meditation_time > 0:
-            st.info("Keep going! Even a few minutes of mindfulness can help.")
-
-        st.checkbox(
-            "Complete a Meditation Session",
-            value=meditation_time >= 10,
-            disabled=True
-        )
-
-        st.info(
-            "**Tip:** Try slow breathing, focusing on the present moment, "
-            "and reducing distractions during meditation."
-        )
 # ------------------------------
 # Brain Games
 # ------------------------------
