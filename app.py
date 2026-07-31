@@ -321,11 +321,34 @@ def feedback_message(score):
 
 
 def goal_checklist():
-    st.checkbox("Walk 8,000 Steps", value=steps >= 8000, disabled=True)
-    st.checkbox("Exercise 30 Minutes", value=exercise_minutes >= 30, disabled=True)
-    st.checkbox("Sleep 8 Hours", value=sleep_hours >= 8, disabled=True)
-    st.checkbox("Complete a Brain Game", value=games >= 1, disabled=True)
-    st.checkbox("Drink Enough Water", value=water, disabled=True)
+    goals = [
+        ("Walk 8,000 Steps", steps >= 8000),
+        ("Exercise 30 Minutes", exercise_minutes >= 30),
+        ("Sleep 8 Hours", sleep_hours >= 8),
+        ("Complete a Brain Game", games >= 1),
+        ("Drink Enough Water", water)
+    ]
+
+    for text, completed in goals:
+        icon = "✅" if completed else "⬜"
+
+        st.markdown(
+            f"""
+            <div style="
+                background:#F9FAFF;
+                border:1px solid #E5E7F2;
+                border-radius:10px;
+                padding:10px 14px;
+                margin-bottom:8px;
+                font-weight:600;
+                color:#1B1F30;
+                font-size:16px;
+            ">
+                {icon} {text}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
 
 def doctor_expander():
