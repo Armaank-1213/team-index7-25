@@ -83,14 +83,30 @@ p, span, label, .stMarkdown {
 .clariti-topbar {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding-bottom: 1.1rem;
-    margin-bottom: 1.6rem;
+    gap: 12px;
+    padding: 0.4rem 0 0.6rem 0;
+    margin-bottom: 1rem;
     border-bottom: 1px solid var(--border);
 }
 
 .clariti-topbar img {
-    border-radius: 12px;
+    border-radius: 10px;
+    width: 48px;
+    height: 48px;
+}
+
+.clariti-topbar .clariti-title {
+    margin: 0;
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+}
+
+.clariti-topbar .clariti-tagline {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
 }
 
 .clariti-topbar .clariti-title {
