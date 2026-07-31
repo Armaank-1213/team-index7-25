@@ -794,6 +794,109 @@ elif page == "Sleep":
         col3.info(
             "🛡️ Brain Health\n\nSupports long-term cognitive wellness."
         )
+        # ------------------------------
+# Meditation
+# ------------------------------
+elif page == "Meditation":
+
+    with st.container(key="card_meditation"):
+        st.subheader("Meditation & Mindfulness")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.metric(
+                "Meditation Today",
+                f"{meditation_minutes} min"
+            )
+
+        with col2:
+            st.metric(
+                "Daily Goal",
+                "10 min"
+            )
+
+        st.progress(min(meditation_minutes / 10, 1.0))
+
+
+        if meditation_minutes >= 10:
+            st.success(
+                "Great job! You completed today's mindfulness goal."
+            )
+        elif meditation_minutes > 0:
+            st.info(
+                "Good start! Try reaching 10 minutes for the full goal."
+            )
+        else:
+            st.warning(
+                "Take a few minutes today to practice mindfulness."
+            )
+
+
+    with st.container(key="card_meditation_goal"):
+        st.subheader("Meditation Goal")
+
+        icon = "✅" if meditation_minutes >= 10 else "⬜"
+
+        st.markdown(
+            f"""
+            <div style="
+                background:#F9FAFF;
+                border:1px solid #E5E7F2;
+                border-radius:10px;
+                padding:12px;
+                font-weight:600;
+            ">
+                {icon} Complete 10 Minutes of Meditation
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+
+    with st.container(key="card_meditation_brain"):
+        st.subheader("Why Meditation Helps the Brain")
+
+        st.write(
+            """
+            Meditation is a mindfulness practice that trains attention and
+            awareness. Regular meditation may help support brain health by
+            improving stress management and mental focus.
+            """
+        )
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.info(
+            "🧠 Focus\n\nSupports attention and concentration."
+        )
+
+        col2.info(
+            "😌 Stress\n\nHelps manage stress and relaxation."
+        )
+
+        col3.info(
+            "💭 Awareness\n\nEncourages mindfulness and emotional balance."
+        )
+
+
+    with st.container(key="card_meditation_timer"):
+        st.subheader("Quick Meditation Guide")
+
+        st.write(
+            """
+            Try this simple session:
+
+            1. Sit comfortably and relax your body  
+            2. Take slow, steady breaths  
+            3. Focus on your breathing  
+            4. Notice distractions and gently return your focus  
+            """
+        )
+
+        st.caption(
+            "Even short mindfulness sessions can help build a healthy routine."
+        )
 # ------------------------------
 # Brain Games
 # ------------------------------
