@@ -394,15 +394,82 @@ def goal_checklist():
 
 
 def doctor_expander():
-    with st.expander("Doctor Referral"):
-        referral = st.checkbox("I'd like information about seeing a doctor")
-        if referral:
-            st.info("""
-Talk to your primary care doctor if you notice memory changes,
-difficulty concentrating, or other concerns.
 
-Early evaluation can be very helpful.
-""")
+    st.subheader("When Should You Consider Talking to a Doctor?")
+
+    st.write(
+        """
+        A healthcare professional can help evaluate changes in memory,
+        concentration, mood, or daily functioning. Early conversations can
+        help identify concerns and create a plan for maintaining brain health.
+        """
+    )
+
+    concerns = [
+        "Frequent memory problems affecting daily activities",
+        "Difficulty focusing or completing normal tasks",
+        "Changes in sleep patterns or energy levels",
+        "Increased confusion or trouble finding words",
+        "Concerns from family or close friends"
+    ]
+
+    for concern in concerns:
+        st.markdown(
+            f"""
+            <div style="
+                background:#F9FAFF;
+                border:1px solid #E5E7F2;
+                border-radius:10px;
+                padding:12px;
+                margin-bottom:8px;
+                font-weight:600;
+            ">
+                ⚠️ {concern}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    st.divider()
+
+    st.subheader("Doctor Visit Preparation")
+
+    preparation = [
+        "Track changes in memory or focus",
+        "Write down questions before your appointment",
+        "Bring a list of medications or supplements",
+        "Share changes in sleep, exercise, and daily habits"
+    ]
+
+    for item in preparation:
+        st.markdown(
+            f"""
+            <div style="
+                background:#FFFFFF;
+                border:1px solid #E5E7F2;
+                border-radius:10px;
+                padding:10px;
+                margin-bottom:6px;
+            ">
+                ✅ {item}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    st.divider()
+
+    st.subheader("Referral Request")
+
+    referral = st.checkbox(
+        "I would like information about scheduling a doctor visit"
+    )
+
+    if referral:
+        st.success(
+            "Consider contacting your primary care provider "
+            "to discuss your concerns and next steps."
+        )
 
 
 # ------------------------------
