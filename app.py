@@ -49,7 +49,6 @@ html, body, [class*="css"] {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* Hide default Streamlit chrome for a cleaner, branded look */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 
@@ -67,6 +66,7 @@ h1, h2, h3 {
     color: var(--text-primary);
     font-weight: 700;
 }
+
 h2, h3 {
     font-size: 1.15rem;
     text-transform: uppercase;
@@ -78,6 +78,7 @@ p, span, label, .stMarkdown {
     color: var(--text-primary);
 }
 
+
 /* ---------- Top bar ---------- */
 .clariti-topbar {
     display: flex;
@@ -87,69 +88,80 @@ p, span, label, .stMarkdown {
     margin-bottom: 1.6rem;
     border-bottom: 1px solid var(--border);
 }
+
 .clariti-topbar img {
     border-radius: 12px;
 }
+
 .clariti-topbar .clariti-title {
     margin: 0;
     font-size: 1.9rem;
     font-weight: 800;
     color: var(--text-primary);
-    letter-spacing: -0.01em;
 }
+
 .clariti-topbar .clariti-tagline {
     margin: 0;
     color: var(--text-secondary);
-    font-size: 0.95rem;
 }
+
 
 /* ---------- Sidebar ---------- */
 section[data-testid="stSidebar"] {
     background: linear-gradient(180deg, var(--navy) 0%, var(--navy-soft) 100%);
 }
+
 section[data-testid="stSidebar"] * {
     color: #E7E8F5 !important;
 }
+
 section[data-testid="stSidebar"] hr {
     border-color: rgba(255,255,255,0.14);
 }
+
 .clariti-sidebar-brand {
     text-align: center;
     padding: 0.5rem 0 1.1rem 0;
 }
+
 .clariti-sidebar-brand img {
     border-radius: 10px;
 }
-.clariti-sidebar-brand .brand-name {
+
+.brand-name {
     margin-top: 0.5rem;
     font-weight: 800;
     font-size: 1.05rem;
-    letter-spacing: 0.12em;
 }
 
-/* Styled nav (built on st.radio, circles hidden, active item highlighted) */
+
+/* ---------- Sidebar Navigation ---------- */
 div[class*="st-key-nav_container"] div[role="radiogroup"] {
     gap: 3px;
 }
+
 div[class*="st-key-nav_container"] div[role="radiogroup"] label {
     padding: 10px 14px;
     border-radius: 9px;
     margin-bottom: 2px;
-    transition: background 0.15s ease;
 }
+
 div[class*="st-key-nav_container"] div[role="radiogroup"] label:hover {
     background: rgba(255,255,255,0.08);
 }
+
 div[class*="st-key-nav_container"] div[role="radiogroup"] label:has(input:checked) {
     background: rgba(124,106,232,0.35);
     border-left: 3px solid var(--indigo-light);
     font-weight: 700;
 }
+
 div[class*="st-key-nav_container"] div[role="radiogroup"] label > div:first-child {
-    display: none;
+    display:none;
 }
 
-/* ---------- Card panels (used across every page) ---------- */
+
+/* ---------- Cards ---------- */
 div[class*="st-key-card_"] {
     background: var(--card-bg);
     border: 1px solid var(--border);
@@ -159,37 +171,26 @@ div[class*="st-key-card_"] {
     box-shadow: 0 1px 3px rgba(16,24,64,0.06);
 }
 
-/* ---------- Buttons (general) ---------- */
+
+/* ---------- Buttons ---------- */
 .stButton > button {
     background: var(--indigo);
-    color: #FFFFFF;
+    color: white;
     border: none;
     border-radius: 10px;
     font-weight: 600;
-    padding: 0.55em 1.1em;
-    transition: background 0.15s ease;
 }
+
 .stButton > button:hover {
     background: var(--indigo-light);
-    color: #FFFFFF;
 }
-.stButton > button:disabled {
-    background: #E3F8EC;
-    color: #1E7F4B;
-    border: 2px solid #34C778;
-    opacity: 1;
-}
-/* "Currently flipped" memory card = amber highlight, distinct from all other buttons */
+
 button[kind="primary"] {
     background: #FFF4DA !important;
     color: #8A5B00 !important;
     border: 2px solid var(--amber) !important;
-    font-weight: 700;
 }
-button[kind="primary"]:hover {
-    background: #FFE9B8 !important;
-    color: #8A5B00 !important;
-}
+
 
 /* ---------- Metrics ---------- */
 div[data-testid="stMetric"] {
@@ -199,16 +200,46 @@ div[data-testid="stMetric"] {
     padding: 12px 14px;
 }
 
+
 .stProgress > div > div > div > div {
     background: linear-gradient(90deg, var(--indigo), var(--indigo-light));
 }
 
-/* ---------- Memory game grid: bigger, high-contrast cards ---------- */
+
+/* ---------- Memory Game ---------- */
 div[class*="st-key-mm_grid_container"] .stButton > button {
     font-size: 2.3rem;
     min-height: 96px;
     border-radius: 14px;
 }
+
+
+/* ---------- GOAL CHECKLIST FIX ---------- */
+div[data-testid="stCheckbox"] {
+    background: #F9FAFF;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+}
+
+div[data-testid="stCheckbox"] label {
+    color: var(--text-primary) !important;
+    font-weight: 600;
+}
+
+div[data-testid="stCheckbox"] p {
+    color: var(--text-primary) !important;
+}
+
+div[data-testid="stCheckbox"] input {
+    accent-color: var(--indigo);
+}
+
+div[data-testid="stCheckbox"] label:hover {
+    color: var(--indigo) !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
