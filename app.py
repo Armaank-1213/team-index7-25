@@ -353,6 +353,103 @@ div[class*="st-key-card_dash_snapshot"] div[class*="st-key-metric_link"] .stButt
     color: var(--indigo) !important;
 }
 
+
+/* ---------- Page hero banners (Exercise / Sleep / Meditation / Doctor) ---------- */
+.clariti-page-hero {
+    border-radius: 18px;
+    padding: 1.75rem 2rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 6px 20px rgba(63,55,201,0.22);
+}
+
+.clariti-page-hero .hero-icon {
+    font-size: 2.1rem;
+    line-height: 1;
+    margin-bottom: 0.4rem;
+}
+
+.clariti-page-hero .hero-title {
+    color: #FFFFFF;
+    font-size: 1.55rem;
+    font-weight: 800;
+    margin-bottom: 0.25rem;
+}
+
+.clariti-page-hero .hero-tagline {
+    color: rgba(255,255,255,0.85);
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+
+/* ---------- Tip cards (replaces plain info boxes) ---------- */
+.clariti-tip-card {
+    background: #FFFFFF;
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--indigo);
+    border-radius: 14px;
+    padding: 1.1rem 1rem;
+    text-align: center;
+    height: 100%;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.clariti-tip-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(16,24,64,0.10);
+}
+
+.clariti-tip-card .tip-icon {
+    font-size: 1.7rem;
+    margin-bottom: 0.35rem;
+}
+
+.clariti-tip-card .tip-title {
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.clariti-tip-card .tip-desc {
+    font-size: 0.83rem;
+    color: var(--text-secondary);
+    line-height: 1.35;
+}
+
+
+/* ---------- Status chips (replaces plain goal-status divs) ---------- */
+.clariti-status-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #F9FAFF;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.clariti-status-chip.done {
+    background: rgba(34,197,94,0.10);
+    border-color: rgba(34,197,94,0.35);
+}
+
+.clariti-status-chip .chip-icon {
+    font-size: 1.05rem;
+}
+
+
+/* ---------- Card hover lift (general engagement polish) ---------- */
+div[class*="st-key-card_"] {
+    transition: box-shadow 0.2s ease;
+}
+
+div[class*="st-key-card_"]:hover {
+    box-shadow: 0 4px 16px rgba(63,55,201,0.12);
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -491,6 +588,44 @@ if games >= 1:
 
 if water:
     score += 10
+
+
+def page_hero(icon, title, tagline, gradient):
+    st.markdown(
+        f"""
+        <div class="clariti-page-hero" style="background:{gradient};">
+            <div class="hero-icon">{icon}</div>
+            <div class="hero-title">{title}</div>
+            <p class="hero-tagline">{tagline}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def tip_cards(items, accent):
+    cols = st.columns(len(items))
+    for col, (icon, title, desc) in zip(cols, items):
+        with col:
+            st.markdown(
+                f"""
+                <div class="clariti-tip-card" style="border-top-color:{accent};">
+                    <div class="tip-icon">{icon}</div>
+                    <div class="tip-title">{title}</div>
+                    <div class="tip-desc">{desc}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+
+def status_chip(text, done):
+    cls = "clariti-status-chip done" if done else "clariti-status-chip"
+    icon = "✅" if done else "⬜"
+    st.markdown(
+        f'<div class="{cls}"><span class="chip-icon">{icon}</span>{text}</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def feedback_message(score):
@@ -1149,8 +1284,14 @@ if page == "Dashboard":
 # ------------------------------
 elif page == "Exercise":
 
+    page_hero(
+        "🏃", "Exercise & Brain Health",
+        "Move your body, sharpen your mind.",
+        "linear-gradient(135deg, #4895EF 0%, #3F37C9 100%)",
+    )
+
     with st.container(key="card_exercise"):
-        st.subheader("Exercise & Brain Health")
+        st.subheader("📊 Today's Numbers")
 
         col1, col2 = st.columns(2)
 
@@ -1183,35 +1324,14 @@ elif page == "Exercise":
 
 
     with st.container(key="card_exercise_goals"):
-        st.subheader("Exercise Goals")
+        st.subheader("🎯 Exercise Goals")
 
-        goals = [
-            ("Walk 8,000 Steps", steps >= 8000),
-            ("Exercise 30 Minutes", exercise_minutes >= 30)
-        ]
-
-        for goal, completed in goals:
-            icon = "✅" if completed else "⬜"
-
-            st.markdown(
-                f"""
-                <div style="
-                    background:#F9FAFF;
-                    border:1px solid #E5E7F2;
-                    border-radius:10px;
-                    padding:12px;
-                    margin-bottom:8px;
-                    font-weight:600;
-                ">
-                    {icon} {goal}
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+        status_chip("Walk 8,000 Steps", steps >= 8000)
+        status_chip("Exercise 30 Minutes", exercise_minutes >= 30)
 
 
     with st.container(key="card_exercise_brain"):
-        st.subheader("Why Exercise Helps Your Brain")
+        st.subheader("🧠 Why Exercise Helps Your Brain")
 
         st.write(
             """
@@ -1223,11 +1343,14 @@ elif page == "Exercise":
             """
         )
 
-        col1, col2, col3 = st.columns(3)
-
-        col1.info("🧠 Memory\n\nSupports learning and recall.")
-        col2.info("🎯 Focus\n\nHelps attention and concentration.")
-        col3.info("😊 Mood\n\nCan reduce stress and improve mental well-being.")
+        tip_cards(
+            [
+                ("🧠", "Memory", "Supports learning and recall."),
+                ("🎯", "Focus", "Helps attention and concentration."),
+                ("😊", "Mood", "Can reduce stress and improve mental well-being."),
+            ],
+            "#4895EF",
+        )
 
         pct_steps = min(steps / 8000, 1.0) * 100
         pct_exercise_min = min(exercise_minutes / 30, 1.0) * 100
@@ -1243,8 +1366,14 @@ elif page == "Exercise":
 # ------------------------------
 elif page == "Sleep":
 
+    page_hero(
+        "😴", "Sleep & Brain Recovery",
+        "Rest is when your brain does its best work.",
+        "linear-gradient(135deg, #3F37C9 0%, #560BAD 100%)",
+    )
+
     with st.container(key="card_sleep"):
-        st.subheader("Sleep & Brain Recovery")
+        st.subheader("📊 Today's Numbers")
 
         st.metric(
             "Hours Slept",
@@ -1269,28 +1398,13 @@ elif page == "Sleep":
 
 
     with st.container(key="card_sleep_goal"):
-        st.subheader("Sleep Goal")
+        st.subheader("🎯 Sleep Goal")
 
-        icon = "✅" if sleep_hours >= 8 else "⬜"
-
-        st.markdown(
-            f"""
-            <div style="
-                background:#F9FAFF;
-                border:1px solid #E5E7F2;
-                border-radius:10px;
-                padding:12px;
-                font-weight:600;
-            ">
-                {icon} Sleep 8 Hours
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        status_chip("Sleep 8 Hours", sleep_hours >= 8)
 
 
     with st.container(key="card_sleep_brain"):
-        st.subheader("Why Sleep Matters for the Brain")
+        st.subheader("🧠 Why Sleep Matters for the Brain")
 
         st.write(
             """
@@ -1302,18 +1416,13 @@ elif page == "Sleep":
             """
         )
 
-        col1, col2, col3 = st.columns(3)
-
-        col1.info(
-            "🧠 Memory\n\nHelps store and organize new information."
-        )
-
-        col2.info(
-            "⚡ Energy\n\nImproves focus and mental performance."
-        )
-
-        col3.info(
-            "🛡️ Brain Health\n\nSupports long-term cognitive wellness."
+        tip_cards(
+            [
+                ("🧠", "Memory", "Helps store and organize new information."),
+                ("⚡", "Energy", "Improves focus and mental performance."),
+                ("🛡️", "Brain Health", "Supports long-term cognitive wellness."),
+            ],
+            "#3F37C9",
         )
 
         pct_sleep = min(sleep_hours / 8, 1.0) * 100
@@ -1326,8 +1435,14 @@ elif page == "Sleep":
 # ------------------------------
 elif page == "Meditation":
 
+    page_hero(
+        "🧘", "Meditation & Mindfulness",
+        "A few quiet minutes, a clearer mind.",
+        "linear-gradient(135deg, #560BAD 0%, #4895EF 100%)",
+    )
+
     with st.container(key="card_meditation"):
-        st.subheader("Meditation & Mindfulness")
+        st.subheader("📊 Today's Numbers")
 
         col1, col2 = st.columns(2)
 
@@ -1361,28 +1476,13 @@ elif page == "Meditation":
 
 
     with st.container(key="card_meditation_goal"):
-        st.subheader("Meditation Goal")
+        st.subheader("🎯 Meditation Goal")
 
-        icon = "✅" if meditation_minutes >= 10 else "⬜"
-
-        st.markdown(
-            f"""
-            <div style="
-                background:#F9FAFF;
-                border:1px solid #E5E7F2;
-                border-radius:10px;
-                padding:12px;
-                font-weight:600;
-            ">
-                {icon} Complete 10 Minutes of Meditation
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        status_chip("Complete 10 Minutes of Meditation", meditation_minutes >= 10)
 
 
     with st.container(key="card_meditation_brain"):
-        st.subheader("Why Meditation Helps the Brain")
+        st.subheader("🧠 Why Meditation Helps the Brain")
 
         st.write(
             """
@@ -1392,18 +1492,13 @@ elif page == "Meditation":
             """
         )
 
-        col1, col2, col3 = st.columns(3)
-
-        col1.info(
-            "🧠 Focus\n\nSupports attention and concentration."
-        )
-
-        col2.info(
-            "😌 Stress\n\nHelps manage stress and relaxation."
-        )
-
-        col3.info(
-            "💭 Awareness\n\nEncourages mindfulness and emotional balance."
+        tip_cards(
+            [
+                ("🧠", "Focus", "Supports attention and concentration."),
+                ("😌", "Stress", "Helps manage stress and relaxation."),
+                ("💭", "Awareness", "Encourages mindfulness and emotional balance."),
+            ],
+            "#560BAD",
         )
 
         pct_meditation = min(meditation_minutes / 10, 1.0) * 100
@@ -1414,7 +1509,7 @@ elif page == "Meditation":
 
 
     with st.container(key="card_meditation_video"):
-        st.subheader("Watch: A Short Guided Breathing Meditation")
+        st.subheader("🎬 Watch: A Short Guided Breathing Meditation")
         st.caption(
             "A 2-minute guided breathing exercise you can follow along with right now."
         )
@@ -1427,7 +1522,7 @@ elif page == "Meditation":
 
 
     with st.container(key="card_meditation_timer"):
-        st.subheader("Quick Meditation Guide")
+        st.subheader("📝 Quick Meditation Guide")
 
         st.write(
             """
@@ -1463,8 +1558,13 @@ elif page == "Brain Games":
 # Doctor
 # ------------------------------
 elif page == "Doctor":
+    page_hero(
+        "🩺", "Doctor Referral",
+        "Know when — and how — to reach out for support.",
+        "linear-gradient(135deg, #3F37C9 0%, #4895EF 100%)",
+    )
+
     with st.container(key="card_doctor"):
-        st.subheader("Doctor Referral")
         doctor_expander()
 
 # ------------------------------
