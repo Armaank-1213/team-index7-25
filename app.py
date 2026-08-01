@@ -1,9 +1,35 @@
 import base64
+import os
 import random
 import time
 from io import BytesIO
 
 import streamlit as st
+import streamlit.components.v1 as components
+
+# ------------------------------
+# Keystroke capture bridge (used by the Typing Test brain game).
+#
+# st.text_input only ever gives Python the final submitted string, so
+# there's no way to measure typing *rhythm* server-side — only total
+# time from when the phrase was shown, which wrongly counts reading
+# time as typing time. This declares a real bidirectional component
+# (backed by keystroke_component/index.html) that captures
+# per-keystroke timestamps in the browser and reports summary stats
+# back. st.components.v1.html() was tried first and doesn't return a
+# value in this Streamlit version — components.declare_component is
+# the mechanism that actually round-trips data.
+# ------------------------------
+_KEYSTROKE_COMPONENT_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "keystroke_component"
+)
+_keystroke_component = components.declare_component(
+    "keystroke_capture", path=_KEYSTROKE_COMPONENT_DIR
+)
+
+
+def keystroke_input(key):
+    return _keystroke_component(key=key, default=None)
 
 # ------------------------------
 # Logo icon (head/lighthouse mark only, cropped from the full logo,
@@ -1201,7 +1227,6 @@ TYPING_PHRASES = [
 
 def new_typing_phrase():
     st.session_state.tt_phrase = random.choice(TYPING_PHRASES)
-    st.session_state.tt_start_time = time.time()
 
 
 def new_typing_game():
@@ -1210,19 +1235,29 @@ def new_typing_game():
     st.session_state.tt_counted = False
     st.session_state.tt_just_completed = False
     st.session_state.tt_feedback = None
+    st.session_state.tt_last_metrics = None
     new_typing_phrase()
 
 
-def submit_typing():
-    typed = st.session_state.get("tt_input") or ""
+def process_typing_result(result):
+    typed = (result.get("typed") or "").strip().lower()
     target = st.session_state.tt_phrase
-    elapsed_minutes = max(time.time() - st.session_state.tt_start_time, 0.01) / 60
-    wpm = round(len(target.split()) / elapsed_minutes)
 
-    matches = sum(1 for a, b in zip(typed.strip().lower(), target) if a == b)
+    total_ms = result.get("total_ms") or 0
+    minutes = max(total_ms, 1) / 60000
+    wpm = round(len(target.split()) / minutes) if minutes > 0 else 0
+
+    matches = sum(1 for a, b in zip(typed, target) if a == b)
     accuracy = round((matches / len(target)) * 100) if target else 0
 
-    if typed.strip().lower() == target:
+    st.session_state.tt_last_metrics = {
+        "avg_interval_ms": result.get("avg_interval_ms") or 0,
+        "interval_std_ms": result.get("interval_std_ms") or 0,
+        "backspaces": result.get("backspaces") or 0,
+        "motion_std": result.get("motion_std"),
+    }
+
+    if typed == target:
         st.session_state.tt_streak += 1
         st.session_state.tt_best_wpm = max(st.session_state.get("tt_best_wpm", 0), wpm)
         st.session_state.tt_feedback = f"correct:{wpm}:{accuracy}"
@@ -1236,7 +1271,6 @@ def submit_typing():
         award_game_completion()
 
     new_typing_phrase()
-    st.session_state.tt_input = ""
 
 
 def typing_test_game():
@@ -1259,11 +1293,16 @@ def typing_test_game():
         st.error(f"Not quite — {accuracy}% character accuracy. Try to match it exactly.")
 
     st.markdown(f"### Type this:\n> {st.session_state.tt_phrase}")
-    st.text_input(
-        "Type it here", key="tt_input", label_visibility="collapsed",
-        placeholder="Start typing...",
-    )
-    st.button("Submit", key="tt_submit", on_click=submit_typing, use_container_width=True)
+
+    result = keystroke_input(key="tt_keystroke")
+
+    # The component keeps returning its last-sent value across reruns
+    # it didn't cause (e.g. toggling a checkbox elsewhere) — only act
+    # on it once per distinct submission, identified by its nonce.
+    if result and result.get("nonce") != st.session_state.get("tt_last_nonce"):
+        st.session_state.tt_last_nonce = result["nonce"]
+        process_typing_result(result)
+        st.rerun()
 
     if st.session_state.get("tt_just_completed"):
         st.balloons()
@@ -1271,6 +1310,19 @@ def typing_test_game():
             f"{TYPING_WIN_STREAK} phrases in a row! Logged to today's Brain Games count."
         )
         st.session_state.tt_just_completed = False
+
+    metrics = st.session_state.get("tt_last_metrics")
+    if metrics:
+        motion_note = (
+            f", motion variance {metrics['motion_std']:.3f}"
+            if metrics.get("motion_std") is not None
+            else ""
+        )
+        st.caption(
+            f"Last attempt: {metrics['avg_interval_ms']:.0f}ms avg key interval "
+            f"(±{metrics['interval_std_ms']:.0f}ms), {metrics['backspaces']} corrections"
+            f"{motion_note}"
+        )
 
 
 # ------------------------------
@@ -1690,20 +1742,27 @@ elif page == "Brain Games":
     with st.container(key="card_games_picker"):
         st.subheader("Choose a Game")
 
+        # The radio's own widget key only lives in session_state while
+        # it's actually being rendered — Streamlit drops it on any run
+        # where this branch isn't taken (i.e. any other page), so a
+        # separate plain variable remembers the choice across page
+        # navigation and reseeds the radio via `index` each time.
         game_keys = list(GAME_REGISTRY.keys())
         st.session_state.setdefault(
-            "brain_game_choice", st.session_state.get("active_game", game_keys[0])
+            "brain_game_choice_saved", st.session_state.get("active_game", game_keys[0])
         )
 
         with st.container(key="game_picker_container"):
             chosen_key = st.radio(
                 "Choose a game",
                 game_keys,
-                key="brain_game_choice",
+                index=game_keys.index(st.session_state.brain_game_choice_saved),
                 format_func=lambda k: GAME_REGISTRY[k]["label"],
                 horizontal=True,
                 label_visibility="collapsed",
+                key="brain_game_choice",
             )
+            st.session_state.brain_game_choice_saved = chosen_key
 
     with st.container(key="card_games_play"):
         game = GAME_REGISTRY[chosen_key]

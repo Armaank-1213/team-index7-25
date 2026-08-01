@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: transparent;
+  }
+  .wrap { padding: 2px 2px 6px 2px; }
+  input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 1rem;
+    border: 1px solid #E5E7F2;
+    border-radius: 10px;
+    outline: none;
+    font-family: inherit;
+    color: #1B1F30;
+  }
+  input[type="text"]:focus {
+    border-color: #4895EF;
+  }
+  button {
+    margin-top: 8px;
+    width: 100%;
+    padding: 10px 12px;
+    background: #3F37C9;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  button:hover { background: #4895EF; }
+  .hint {
+    margin-top: 6px;
+    font-size: 0.72rem;
+    color: #666C80;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <input type="text" id="typing-input" autocomplete="off" autocapitalize="off"
+         spellcheck="false" placeholder="Start typing..." />
+  <button id="submit-btn">Submit</button>
+  <div class="hint">Timed from your first keystroke — reading the phrase first won't count against you.</div>
+</div>
+
+<script>
+// ------------------------------------------------------------------
+// Keystroke capture bridge.
+//
+// Streamlit's st.text_input only ever sees the final submitted string,
+// so plain Python can't measure typing *rhythm* — only total elapsed
+// time from when the phrase was rendered, which unfairly counts
+// reading/thinking time as typing time. This component reads
+// high-resolution timestamps (performance.now()) per keystroke inside
+// the browser itself and reports summary stats back to Python.
+//
+// st.components.v1.html() only renders HTML — it has no return value
+// in this Streamlit version. Real bidirectional communication needs a
+// component declared via components.declare_component(path=...), whose
+// frontend must speak Streamlit's component postMessage protocol
+// itself (there's no bundler/build step here, so it's hand-written
+// below rather than pulled from the streamlit-component-lib package).
+// ------------------------------------------------------------------
+
+let keyTimestamps = [];
+let backspaceCount = 0;
+let startTime = null;
+let motionSamples = [];
+let motionListenerAttached = false;
+
+const input = document.getElementById("typing-input");
+const submitBtn = document.getElementById("submit-btn");
+
+function attachMotionListener() {
+  if (motionListenerAttached) return;
+  motionListenerAttached = true;
+  window.addEventListener("devicemotion", function (e) {
+    const acc = e.accelerationIncludingGravity;
+    if (acc && acc.x !== null && acc.x !== undefined) {
+      const mag = Math.sqrt((acc.x || 0) ** 2 + (acc.y || 0) ** 2 + (acc.z || 0) ** 2);
+      motionSamples.push(mag);
+    }
+  });
+}
+
+function maybeRequestMotionPermission() {
+  // iOS 13+ requires an explicit permission prompt triggered by a user
+  // gesture; desktop/Android just work (or DeviceMotionEvent is simply
+  // absent, which we handle gracefully either way).
+  if (typeof DeviceMotionEvent !== "undefined" &&
+      typeof DeviceMotionEvent.requestPermission === "function") {
+    DeviceMotionEvent.requestPermission()
+      .then(function (state) {
+        if (state === "granted") attachMotionListener();
+      })
+      .catch(function () {});
+  } else if (typeof DeviceMotionEvent !== "undefined") {
+    attachMotionListener();
+  }
+}
+
+function resetState() {
+  keyTimestamps = [];
+  backspaceCount = 0;
+  startTime = null;
+  motionSamples = [];
+  input.value = "";
+}
+
+function sendValue(value) {
+  window.parent.postMessage({
+    isStreamlitMessage: true,
+    type: "streamlit:setComponentValue",
+    value: value,
+    dataType: "json",
+  }, "*");
+}
+
+function setFrameHeight() {
+  window.parent.postMessage({
+    isStreamlitMessage: true,
+    type: "streamlit:setFrameHeight",
+    height: document.body.scrollHeight + 8,
+  }, "*");
+}
+
+function submitAttempt() {
+  const now = performance.now();
+  const totalMs = startTime !== null ? now - startTime : 0;
+
+  const intervals = [];
+  for (let i = 1; i < keyTimestamps.length; i++) {
+    intervals.push(keyTimestamps[i] - keyTimestamps[i - 1]);
+  }
+  const avgInterval = intervals.length
+    ? intervals.reduce((a, b) => a + b, 0) / intervals.length
+    : 0;
+  const variance = intervals.length
+    ? intervals.reduce((a, b) => a + (b - avgInterval) ** 2, 0) / intervals.length
+    : 0;
+  const stdInterval = Math.sqrt(variance);
+
+  let motionStd = null;
+  if (motionSamples.length > 2) {
+    const avgMotion = motionSamples.reduce((a, b) => a + b, 0) / motionSamples.length;
+    const motionVar = motionSamples.reduce((a, b) => a + (b - avgMotion) ** 2, 0) / motionSamples.length;
+    motionStd = Math.sqrt(motionVar);
+  }
+
+  sendValue({
+    typed: input.value,
+    total_ms: Math.round(totalMs),
+    keystrokes: keyTimestamps.length,
+    avg_interval_ms: Math.round(avgInterval * 10) / 10,
+    interval_std_ms: Math.round(stdInterval * 10) / 10,
+    backspaces: backspaceCount,
+    motion_samples: motionSamples.length,
+    motion_std: motionStd !== null ? Math.round(motionStd * 1000) / 1000 : null,
+    nonce: Date.now() + "-" + Math.random().toString(36).slice(2),
+  });
+
+  resetState();
+  setFrameHeight();
+}
+
+input.addEventListener("keydown", function (e) {
+  const now = performance.now();
+  if (startTime === null) {
+    startTime = now;
+    maybeRequestMotionPermission();
+  }
+
+  if (e.key === "Enter") {
+    e.preventDefault();
+    submitAttempt();
+    return;
+  }
+
+  keyTimestamps.push(now);
+  if (e.key === "Backspace" || e.key === "Delete") {
+    backspaceCount += 1;
+  }
+});
+
+submitBtn.addEventListener("click", submitAttempt);
+
+window.parent.postMessage({ isStreamlitMessage: true, type: "streamlit:componentReady", apiVersion: 1 }, "*");
+setFrameHeight();
+</script>
+</body>
+</html>
