@@ -122,44 +122,28 @@ p, span, label, .stMarkdown {
 }
 
 
-/* ---------- Sidebar ---------- */
-section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, var(--navy) 0%, var(--navy-soft) 100%);
+/* ---------- Horizontal top navigation ---------- */
+div[class*="st-key-nav_container"] {
+    background: linear-gradient(90deg, var(--navy) 0%, var(--navy-soft) 100%);
+    border-radius: 14px;
+    padding: 8px 12px;
+    margin-bottom: 1.25rem;
 }
 
-section[data-testid="stSidebar"] * {
-    color: #E7E8F5 !important;
-}
-
-section[data-testid="stSidebar"] hr {
-    border-color: rgba(255,255,255,0.14);
-}
-
-.clariti-sidebar-brand {
-    text-align: center;
-    padding: 0.5rem 0 1.1rem 0;
-}
-
-.clariti-sidebar-brand img {
-    border-radius: 10px;
-}
-
-.brand-name {
-    margin-top: 0.5rem;
-    font-weight: 800;
-    font-size: 1.05rem;
-}
-
-
-/* ---------- Sidebar Navigation ---------- */
 div[class*="st-key-nav_container"] div[role="radiogroup"] {
-    gap: 3px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
 }
 
 div[class*="st-key-nav_container"] div[role="radiogroup"] label {
-    padding: 10px 14px;
+    padding: 8px 16px;
     border-radius: 9px;
-    margin-bottom: 2px;
+    color: #E7E8F5 !important;
+}
+
+div[class*="st-key-nav_container"] div[role="radiogroup"] label * {
+    color: #E7E8F5 !important;
 }
 
 div[class*="st-key-nav_container"] div[role="radiogroup"] label:hover {
@@ -167,8 +151,7 @@ div[class*="st-key-nav_container"] div[role="radiogroup"] label:hover {
 }
 
 div[class*="st-key-nav_container"] div[role="radiogroup"] label:has(input:checked) {
-    background: rgba(124,106,232,0.35);
-    border-left: 3px solid var(--indigo-light);
+    background: rgba(124,106,232,0.45);
     font-weight: 700;
 }
 
@@ -375,15 +358,8 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ------------------------------
-# Sidebar brand + navigation
+# Horizontal top navigation (replaces the old sidebar nav)
 # ------------------------------
-st.sidebar.markdown(f"""
-<div class="clariti-sidebar-brand">
-    <img src="data:image/png;base64,{_icon_tag_b64}" width="60" height="60" />
-    <div class="brand-name">CLARITI</div>
-</div>
-""", unsafe_allow_html=True)
-
 NAV_OPTIONS = [
     "Dashboard",
     "Exercise",
@@ -391,7 +367,6 @@ NAV_OPTIONS = [
     "Meditation",
     "Brain Games",
     "Doctor",
-    "About"
 ]
 
 st.session_state.setdefault("nav_page", "Dashboard")
@@ -408,11 +383,12 @@ def toggle_water():
     st.session_state.water = not st.session_state.water
 
 
-with st.sidebar.container(key="nav_container"):
+with st.container(key="nav_container"):
     page = st.radio(
         "Navigation",
         NAV_OPTIONS,
         key="nav_page",
+        horizontal=True,
         label_visibility="collapsed",
     )
 
@@ -439,6 +415,12 @@ EXERCISE_OPTIONS = [0, 10, 15, 20, 30, 45, 60, 90, 120]
 SLEEP_OPTIONS = [4.0, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 10.0]
 MEDITATION_OPTIONS = [0, 5, 10, 15, 20, 30, 45, 60]
 GAMES_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+
+def award_game_completion():
+    st.session_state.games = min(
+        st.session_state.get("games", 0) + 1, max(GAMES_OPTIONS)
+    )
 
 
 def checkin_bar():
@@ -650,9 +632,7 @@ def select_card(idx):
                 st.session_state.mm_won = True
                 if not st.session_state.get("mm_counted"):
                     st.session_state.mm_counted = True
-                    st.session_state.games = min(
-                        st.session_state.get("games", 0) + 1, max(GAMES_OPTIONS)
-                    )
+                    award_game_completion()
         else:
             st.session_state.mm_awaiting_continue = True
 
@@ -742,13 +722,330 @@ def memory_matching_game():
 
 
 # ------------------------------
+# Quick Math
+# ------------------------------
+MATH_WIN_STREAK = 5
+
+
+def new_math_question():
+    op = random.choice(["+", "-", "×"])
+    if op == "-":
+        a, b = random.randint(1, 20), random.randint(1, 20)
+        a, b = max(a, b), min(a, b)
+        answer = a - b
+    elif op == "×":
+        a, b = random.randint(1, 10), random.randint(1, 10)
+        answer = a * b
+    else:
+        a, b = random.randint(1, 20), random.randint(1, 20)
+        answer = a + b
+
+    choices = {answer}
+    while len(choices) < 3:
+        choices.add(max(0, answer + random.choice([-3, -2, -1, 1, 2, 3])))
+    choices = list(choices)
+    random.shuffle(choices)
+
+    st.session_state.qm_question = f"{a} {op} {b}"
+    st.session_state.qm_answer = answer
+    st.session_state.qm_choices = choices
+
+
+def new_math_game():
+    st.session_state.qm_streak = 0
+    st.session_state.qm_best = st.session_state.get("qm_best", 0)
+    st.session_state.qm_counted = False
+    st.session_state.qm_feedback = None
+    new_math_question()
+
+
+def answer_math(choice):
+    if choice == st.session_state.qm_answer:
+        st.session_state.qm_streak += 1
+        st.session_state.qm_feedback = "correct"
+    else:
+        st.session_state.qm_feedback = f"wrong:{st.session_state.qm_answer}"
+        st.session_state.qm_streak = 0
+
+    st.session_state.qm_best = max(st.session_state.get("qm_best", 0), st.session_state.qm_streak)
+
+    if st.session_state.qm_streak >= MATH_WIN_STREAK and not st.session_state.get("qm_counted"):
+        st.session_state.qm_counted = True
+        award_game_completion()
+
+    new_math_question()
+
+
+def quick_math_game():
+    if "qm_question" not in st.session_state:
+        new_math_game()
+
+    m1, m2, m3 = st.columns([2, 2, 2])
+    m1.metric("Streak", st.session_state.qm_streak)
+    m2.metric("Best Streak", st.session_state.get("qm_best", 0))
+    if m3.button("New Round", key="qm_new_round", use_container_width=True):
+        new_math_game()
+        st.rerun()
+
+    fb = st.session_state.get("qm_feedback")
+    if fb == "correct":
+        st.success("Correct!")
+    elif fb and fb.startswith("wrong:"):
+        st.error(f"Not quite — the answer was {fb.split(':', 1)[1]}.")
+
+    st.markdown(f"### {st.session_state.qm_question} = ?")
+
+    cols = st.columns(len(st.session_state.qm_choices))
+    for col, choice in zip(cols, st.session_state.qm_choices):
+        col.button(
+            str(choice),
+            key=f"qm_choice_{choice}_{st.session_state.qm_question}",
+            on_click=answer_math,
+            args=(choice,),
+            use_container_width=True,
+        )
+
+    if st.session_state.qm_streak >= MATH_WIN_STREAK:
+        st.balloons()
+        st.success(
+            f"{MATH_WIN_STREAK} correct in a row! Logged to today's Brain Games count."
+        )
+
+
+# ------------------------------
+# Word Scramble
+# ------------------------------
+WORD_WIN_STREAK = 5
+WORD_LIST = [
+    "MEMORY", "FOCUS", "BALANCE", "HEALTHY", "SLEEP", "BRAIN", "PUZZLE",
+    "MINDFUL", "ENERGY", "CALM", "WELLNESS", "CLARITY",
+]
+
+
+def scramble_word(word):
+    letters = list(word)
+    scrambled = word
+    while scrambled == word:
+        random.shuffle(letters)
+        scrambled = "".join(letters)
+    return scrambled
+
+
+def new_word():
+    word = random.choice(WORD_LIST)
+    st.session_state.ws_word = word
+    st.session_state.ws_scrambled = scramble_word(word)
+
+
+def new_word_game():
+    st.session_state.ws_streak = 0
+    st.session_state.ws_best = st.session_state.get("ws_best", 0)
+    st.session_state.ws_counted = False
+    st.session_state.ws_feedback = None
+    new_word()
+
+
+def submit_word_guess():
+    guess = (st.session_state.get("ws_guess") or "").strip().upper()
+
+    if guess == st.session_state.ws_word:
+        st.session_state.ws_streak += 1
+        st.session_state.ws_feedback = "correct"
+    else:
+        st.session_state.ws_feedback = f"wrong:{st.session_state.ws_word}"
+        st.session_state.ws_streak = 0
+
+    st.session_state.ws_best = max(st.session_state.get("ws_best", 0), st.session_state.ws_streak)
+
+    if st.session_state.ws_streak >= WORD_WIN_STREAK and not st.session_state.get("ws_counted"):
+        st.session_state.ws_counted = True
+        award_game_completion()
+
+    new_word()
+    st.session_state.ws_guess = ""
+
+
+def word_scramble_game():
+    if "ws_word" not in st.session_state:
+        new_word_game()
+
+    m1, m2, m3 = st.columns([2, 2, 2])
+    m1.metric("Streak", st.session_state.ws_streak)
+    m2.metric("Best Streak", st.session_state.get("ws_best", 0))
+    if m3.button("New Round", key="ws_new_round", use_container_width=True):
+        new_word_game()
+        st.rerun()
+
+    fb = st.session_state.get("ws_feedback")
+    if fb == "correct":
+        st.success("Correct!")
+    elif fb and fb.startswith("wrong:"):
+        st.error(f"Not quite — the word was {fb.split(':', 1)[1]}.")
+
+    st.markdown(f"### Unscramble: **{st.session_state.ws_scrambled}**")
+    st.text_input(
+        "Your guess", key="ws_guess", label_visibility="collapsed",
+        placeholder="Type the word...",
+    )
+    st.button("Submit Guess", key="ws_submit", on_click=submit_word_guess, use_container_width=True)
+
+    if st.session_state.ws_streak >= WORD_WIN_STREAK:
+        st.balloons()
+        st.success(
+            f"{WORD_WIN_STREAK} correct in a row! Logged to today's Brain Games count."
+        )
+
+
+# ------------------------------
+# Number Recall
+# ------------------------------
+NR_START_LENGTH = 4
+NR_MAX_LENGTH = 8
+NR_PREVIEW_SECONDS = 3
+
+
+def new_number_round(length):
+    st.session_state.nr_length = length
+    st.session_state.nr_sequence = [random.randint(0, 9) for _ in range(length)]
+    st.session_state.nr_previewing = True
+
+
+def new_number_game():
+    st.session_state.nr_best = st.session_state.get("nr_best", 0)
+    st.session_state.nr_counted = False
+    st.session_state.nr_feedback = None
+    st.session_state.nr_just_completed = False
+    new_number_round(NR_START_LENGTH)
+
+
+def submit_number_guess():
+    guess_digits = [int(ch) for ch in (st.session_state.get("nr_guess") or "") if ch.isdigit()]
+    target = st.session_state.nr_sequence
+
+    if guess_digits == target:
+        st.session_state.nr_feedback = "correct"
+        st.session_state.nr_best = max(st.session_state.get("nr_best", 0), len(target))
+
+        completed_now = False
+        if len(target) >= NR_MAX_LENGTH and not st.session_state.get("nr_counted"):
+            st.session_state.nr_counted = True
+            completed_now = True
+            award_game_completion()
+        st.session_state.nr_just_completed = completed_now
+
+        new_number_round(min(len(target) + 1, NR_MAX_LENGTH))
+    else:
+        st.session_state.nr_feedback = f"wrong:{''.join(map(str, target))}"
+        st.session_state.nr_just_completed = False
+        new_number_round(NR_START_LENGTH)
+
+    st.session_state.nr_guess = ""
+
+
+def number_recall_game():
+    if "nr_sequence" not in st.session_state:
+        new_number_game()
+
+    m1, m2, m3 = st.columns([2, 2, 2])
+    m1.metric("Sequence Length", st.session_state.nr_length)
+    m2.metric("Best", st.session_state.get("nr_best", 0))
+    if m3.button("New Game", key="nr_new_game", use_container_width=True):
+        new_number_game()
+        st.rerun()
+
+    fb = st.session_state.get("nr_feedback")
+    if fb == "correct":
+        st.success("Correct! The sequence gets one digit longer.")
+    elif fb and fb.startswith("wrong:"):
+        st.error(f"Not quite — the sequence was {fb.split(':', 1)[1]}.")
+
+    if st.session_state.nr_previewing:
+        st.info("Memorize this sequence...")
+        st.markdown(f"### {'   '.join(str(d) for d in st.session_state.nr_sequence)}")
+        time.sleep(NR_PREVIEW_SECONDS)
+        st.session_state.nr_previewing = False
+        st.rerun()
+        return
+
+    st.markdown("### Enter the sequence you saw:")
+    st.text_input(
+        "Your answer", key="nr_guess", label_visibility="collapsed",
+        placeholder="e.g. 4729",
+    )
+    st.button("Submit", key="nr_submit", on_click=submit_number_guess, use_container_width=True)
+
+    if st.session_state.get("nr_just_completed"):
+        st.balloons()
+        st.success(
+            f"Recalled a {NR_MAX_LENGTH}-digit sequence! Logged to today's Brain Games count."
+        )
+
+
+# ------------------------------
+# Brain game picker — a random game is shown each time, with a
+# "surprise me" reroll so it doesn't feel like the same game every visit.
+# ------------------------------
+GAME_REGISTRY = {
+    "memory": {
+        "label": "🧩 Memory Match",
+        "desc": "Memorize the board, then flip two cards at a time to find every pair.",
+        "fn": memory_matching_game,
+    },
+    "math": {
+        "label": "➗ Quick Math",
+        "desc": f"Answer {MATH_WIN_STREAK} in a row correctly to complete a round.",
+        "fn": quick_math_game,
+    },
+    "scramble": {
+        "label": "🔤 Word Scramble",
+        "desc": f"Unscramble {WORD_WIN_STREAK} words in a row correctly.",
+        "fn": word_scramble_game,
+    },
+    "recall": {
+        "label": "🔢 Number Recall",
+        "desc": "Memorize a number sequence, then type it back — it grows each round.",
+        "fn": number_recall_game,
+    },
+}
+
+
+def pick_random_game(exclude=None):
+    keys = list(GAME_REGISTRY.keys())
+    if exclude is not None and len(keys) > 1:
+        keys = [k for k in keys if k != exclude]
+    return random.choice(keys)
+
+
+def reroll_game():
+    st.session_state.active_game = pick_random_game(exclude=st.session_state.get("active_game"))
+
+
+def brain_game_panel():
+    if "active_game" not in st.session_state:
+        st.session_state.active_game = pick_random_game()
+
+    game = GAME_REGISTRY[st.session_state.active_game]
+
+    st.markdown(f"#### {game['label']}")
+    st.caption(game["desc"])
+    st.button(
+        "🎲 Surprise Me — Try a Different Game",
+        key="reroll_game",
+        on_click=reroll_game,
+        use_container_width=True,
+    )
+
+    game["fn"]()
+
+
+# ------------------------------
 # Dashboard
 # ------------------------------
 if page == "Dashboard":
     with st.container(key="card_dash_game"):
         st.subheader("🎮 Today's Brain Game")
         st.caption("Start here — a quick game is the fastest way to warm up your brain today.")
-        memory_matching_game()
+        brain_game_panel()
 
     checkin_bar()
 
@@ -810,6 +1107,16 @@ if page == "Dashboard":
 
     with st.container(key="card_dash_doctor"):
         doctor_expander()
+
+    with st.container(key="card_dash_about"):
+        st.subheader("About Clariti")
+        st.write(
+            "Clariti is a cognitive wellness dashboard designed to help track daily "
+            "habits — steps, exercise, sleep, brain games, and hydration — that are "
+            "associated with supporting long-term brain health and reducing the risk "
+            "of cognitive decline."
+        )
+        st.caption("Sprint 1 • Cognitive Wellness Dashboard")
 
 # ------------------------------
 # Exercise
@@ -1124,9 +1431,7 @@ elif page == "Brain Games":
         )
 
     with st.container(key="card_games_memory"):
-        st.subheader("Memory Match")
-        st.caption("Memorize the board, then flip two cards at a time to find every pair.")
-        memory_matching_game()
+        brain_game_panel()
 
 # ------------------------------
 # Doctor
@@ -1135,20 +1440,6 @@ elif page == "Doctor":
     with st.container(key="card_doctor"):
         st.subheader("Doctor Referral")
         doctor_expander()
-
-# ------------------------------
-# About
-# ------------------------------
-elif page == "About":
-    with st.container(key="card_about"):
-        st.subheader("About Clariti")
-        st.write(
-            "Clariti is a cognitive wellness dashboard designed to help track daily "
-            "habits \u2014 steps, exercise, sleep, brain games, and hydration \u2014 that are "
-            "associated with supporting long-term brain health and reducing the risk "
-            "of cognitive decline."
-        )
-        st.caption("Sprint 1 \u2022 Cognitive Wellness Dashboard")
 
 # ------------------------------
 # Footer
