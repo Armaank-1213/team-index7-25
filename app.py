@@ -340,6 +340,19 @@ div[class*="st-key-metric_link"] .stButton > button {
     padding: 4px 10px;
 }
 
+/* The snapshot hero forces text white for readability on its dark
+   background, but these link buttons keep their own light pill
+   background — win back dark, readable text for them specifically. */
+div[class*="st-key-card_dash_snapshot"] div[class*="st-key-metric_link"] .stButton > button,
+div[class*="st-key-card_dash_snapshot"] div[class*="st-key-metric_link"] .stButton > button * {
+    color: var(--text-primary) !important;
+}
+
+div[class*="st-key-card_dash_snapshot"] div[class*="st-key-metric_link"] .stButton > button:hover,
+div[class*="st-key-card_dash_snapshot"] div[class*="st-key-metric_link"] .stButton > button:hover * {
+    color: var(--indigo) !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
