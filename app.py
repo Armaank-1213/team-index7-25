@@ -604,6 +604,7 @@ def new_memory_game(pairs=8):
     st.session_state.mm_awaiting_continue = False
     st.session_state.mm_moves = 0
     st.session_state.mm_won = False
+    st.session_state.mm_just_won = False
     st.session_state.mm_previewing = True
     st.session_state.mm_counted = False
 
@@ -630,6 +631,7 @@ def select_card(idx):
             st.session_state.mm_choice_two = None
             if len(st.session_state.mm_matched) == len(st.session_state.mm_cards):
                 st.session_state.mm_won = True
+                st.session_state.mm_just_won = True
                 if not st.session_state.get("mm_counted"):
                     st.session_state.mm_counted = True
                     award_game_completion()
@@ -714,7 +716,9 @@ def memory_matching_game():
         st.button("Continue", on_click=continue_after_mismatch)
 
     if st.session_state.mm_won:
-        st.balloons()
+        if st.session_state.get("mm_just_won"):
+            st.balloons()
+            st.session_state.mm_just_won = False
         st.success(
             f"You matched every pair in {st.session_state.mm_moves} moves! "
             "Logged automatically to today's Brain Games count."
@@ -755,6 +759,7 @@ def new_math_game():
     st.session_state.qm_streak = 0
     st.session_state.qm_best = st.session_state.get("qm_best", 0)
     st.session_state.qm_counted = False
+    st.session_state.qm_just_completed = False
     st.session_state.qm_feedback = None
     new_math_question()
 
@@ -771,6 +776,7 @@ def answer_math(choice):
 
     if st.session_state.qm_streak >= MATH_WIN_STREAK and not st.session_state.get("qm_counted"):
         st.session_state.qm_counted = True
+        st.session_state.qm_just_completed = True
         award_game_completion()
 
     new_math_question()
@@ -806,7 +812,9 @@ def quick_math_game():
         )
 
     if st.session_state.qm_streak >= MATH_WIN_STREAK:
-        st.balloons()
+        if st.session_state.get("qm_just_completed"):
+            st.balloons()
+            st.session_state.qm_just_completed = False
         st.success(
             f"{MATH_WIN_STREAK} correct in a row! Logged to today's Brain Games count."
         )
@@ -841,6 +849,7 @@ def new_word_game():
     st.session_state.ws_streak = 0
     st.session_state.ws_best = st.session_state.get("ws_best", 0)
     st.session_state.ws_counted = False
+    st.session_state.ws_just_completed = False
     st.session_state.ws_feedback = None
     new_word()
 
@@ -859,6 +868,7 @@ def submit_word_guess():
 
     if st.session_state.ws_streak >= WORD_WIN_STREAK and not st.session_state.get("ws_counted"):
         st.session_state.ws_counted = True
+        st.session_state.ws_just_completed = True
         award_game_completion()
 
     new_word()
@@ -890,7 +900,9 @@ def word_scramble_game():
     st.button("Submit Guess", key="ws_submit", on_click=submit_word_guess, use_container_width=True)
 
     if st.session_state.ws_streak >= WORD_WIN_STREAK:
-        st.balloons()
+        if st.session_state.get("ws_just_completed"):
+            st.balloons()
+            st.session_state.ws_just_completed = False
         st.success(
             f"{WORD_WIN_STREAK} correct in a row! Logged to today's Brain Games count."
         )
@@ -979,6 +991,7 @@ def number_recall_game():
         st.success(
             f"Recalled a {NR_MAX_LENGTH}-digit sequence! Logged to today's Brain Games count."
         )
+        st.session_state.nr_just_completed = False
 
 
 # ------------------------------
