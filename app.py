@@ -450,6 +450,39 @@ div[class*="st-key-card_"]:hover {
     box-shadow: 0 4px 16px rgba(63,55,201,0.12);
 }
 
+
+/* ---------- Brain Games picker (pill tabs) ---------- */
+div[class*="st-key-game_picker_container"] div[role="radiogroup"] {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+div[class*="st-key-game_picker_container"] div[role="radiogroup"] label {
+    padding: 9px 16px;
+    border-radius: 10px;
+    background: #F9FAFF;
+    border: 1px solid var(--border);
+    font-weight: 600;
+}
+
+div[class*="st-key-game_picker_container"] div[role="radiogroup"] label:hover {
+    border-color: var(--indigo-light);
+}
+
+div[class*="st-key-game_picker_container"] div[role="radiogroup"] label:has(input:checked) {
+    background: var(--indigo);
+    border-color: var(--indigo);
+}
+
+div[class*="st-key-game_picker_container"] div[role="radiogroup"] label:has(input:checked) * {
+    color: #FFFFFF !important;
+}
+
+div[class*="st-key-game_picker_container"] div[role="radiogroup"] label > div:first-child {
+    display: none;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -1654,8 +1687,28 @@ elif page == "Brain Games":
             "and reading may help keep your brain sharp over time."
         )
 
-    with st.container(key="card_games_memory"):
-        brain_game_panel()
+    with st.container(key="card_games_picker"):
+        st.subheader("Choose a Game")
+
+        game_keys = list(GAME_REGISTRY.keys())
+        st.session_state.setdefault(
+            "brain_game_choice", st.session_state.get("active_game", game_keys[0])
+        )
+
+        with st.container(key="game_picker_container"):
+            chosen_key = st.radio(
+                "Choose a game",
+                game_keys,
+                key="brain_game_choice",
+                format_func=lambda k: GAME_REGISTRY[k]["label"],
+                horizontal=True,
+                label_visibility="collapsed",
+            )
+
+    with st.container(key="card_games_play"):
+        game = GAME_REGISTRY[chosen_key]
+        st.caption(game["desc"])
+        game["fn"]()
 
 # ------------------------------
 # Doctor
