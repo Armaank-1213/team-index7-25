@@ -130,9 +130,17 @@ function setFrameHeight() {
   window.parent.postMessage({
     isStreamlitMessage: true,
     type: "streamlit:setFrameHeight",
-    height: document.body.scrollHeight + 8,
+    height: document.body.scrollHeight + 16,
   }, "*");
 }
+
+// A single synchronous call at load time can measure the content
+// before the browser has finished laying it out (fonts, box-model
+// settling), freezing the iframe at a too-short height. A
+// ResizeObserver keeps re-reporting the height as it actually
+// stabilizes, and again whenever content changes later (e.g. after
+// resetState() clears the input).
+new ResizeObserver(setFrameHeight).observe(document.body);
 
 function submitAttempt() {
   const now = performance.now();
@@ -195,7 +203,17 @@ input.addEventListener("keydown", function (e) {
 submitBtn.addEventListener("click", submitAttempt);
 
 window.parent.postMessage({ isStreamlitMessage: true, type: "streamlit:componentReady", apiVersion: 1 }, "*");
+
+// The very first setFrameHeight calls (this one, and the
+// ResizeObserver's initial fire below) can land before Streamlit's
+// host page has finished registering this iframe as a known
+// component instance and get silently dropped, freezing the iframe
+// at whatever height it started with. Staggered retries guarantee at
+// least one lands after the host is actually listening.
 setFrameHeight();
+setTimeout(setFrameHeight, 50);
+setTimeout(setFrameHeight, 150);
+setTimeout(setFrameHeight, 400);
 </script>
 </body>
 </html>
