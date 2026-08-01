@@ -1,11 +1,15 @@
 import base64
+import hashlib
 import os
 import random
 import time
+from datetime import datetime, timezone
 from io import BytesIO
 
+import gspread
 import streamlit as st
 import streamlit.components.v1 as components
+from google.oauth2.service_account import Credentials
 
 # ------------------------------
 # Keystroke capture bridge (used by the Typing Test brain game).
@@ -30,6 +34,146 @@ _keystroke_component = components.declare_component(
 
 def keystroke_input(key):
     return _keystroke_component(key=key, default=None)
+
+
+# ------------------------------
+# Google Sheets backend (accounts + per-user activity log).
+#
+# Needs [sheets] and [gcp_service_account] in .streamlit/secrets.toml
+# locally, or in Streamlit Cloud's secrets manager when deployed — see
+# .streamlit/secrets.toml.example for the exact format. Everything in
+# this section fails soft (returns None / False / []) rather than
+# raising, since the app must stay usable while that setup is pending.
+# ------------------------------
+SHEETS_SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive.file",
+]
+
+
+def sheets_configured():
+    try:
+        return "gcp_service_account" in st.secrets and "sheets" in st.secrets
+    except Exception:
+        # st.secrets raises outright when no secrets.toml exists at all
+        # (not just when a specific key is missing), which is exactly
+        # the pre-setup state this function needs to handle gracefully.
+        return False
+
+
+@st.cache_resource
+def _sheets_client():
+    creds = Credentials.from_service_account_info(
+        dict(st.secrets["gcp_service_account"]), scopes=SHEETS_SCOPES
+    )
+    return gspread.authorize(creds)
+
+
+@st.cache_resource
+def _spreadsheet():
+    return _sheets_client().open_by_key(st.secrets["sheets"]["spreadsheet_id"])
+
+
+def _get_or_create_worksheet(title, header):
+    sh = _spreadsheet()
+    try:
+        return sh.worksheet(title)
+    except gspread.WorksheetNotFound:
+        ws = sh.add_worksheet(title=title, rows=1000, cols=len(header))
+        ws.append_row(header)
+        return ws
+
+
+def _users_worksheet():
+    return _get_or_create_worksheet(
+        "Users", ["username", "password_hash", "password_salt", "created_at"]
+    )
+
+
+def _checkins_worksheet():
+    return _get_or_create_worksheet(
+        "CheckIns",
+        [
+            "username", "timestamp", "steps", "exercise_minutes", "sleep_hours",
+            "meditation_minutes", "games", "water", "score",
+        ],
+    )
+
+
+def _typing_worksheet():
+    return _get_or_create_worksheet(
+        "TypingAttempts",
+        [
+            "username", "timestamp", "correct", "wpm", "accuracy",
+            "avg_interval_ms", "interval_std_ms", "backspaces", "motion_std",
+        ],
+    )
+
+
+def hash_password(password, salt=None):
+    salt = salt or os.urandom(16).hex()
+    digest = hashlib.pbkdf2_hmac(
+        "sha256", password.encode("utf-8"), bytes.fromhex(salt), 200_000
+    ).hex()
+    return digest, salt
+
+
+def find_user(username):
+    for row in _users_worksheet().get_all_records():
+        if str(row.get("username", "")).strip().lower() == username.strip().lower():
+            return row
+    return None
+
+
+def create_user(username, password):
+    digest, salt = hash_password(password)
+    _users_worksheet().append_row(
+        [username.strip(), digest, salt, datetime.now(timezone.utc).isoformat()]
+    )
+
+
+def verify_login(username, password):
+    user = find_user(username)
+    if not user:
+        return False
+    digest, _ = hash_password(password, user.get("password_salt"))
+    return digest == user.get("password_hash")
+
+
+def log_checkin(username):
+    try:
+        _checkins_worksheet().append_row([
+            username,
+            datetime.now(timezone.utc).isoformat(),
+            st.session_state.steps,
+            st.session_state.exercise_minutes,
+            st.session_state.sleep_hours,
+            st.session_state.meditation_minutes,
+            st.session_state.games,
+            st.session_state.water,
+            st.session_state.get("last_score", 0),
+        ])
+        return True
+    except Exception:
+        return False
+
+
+def log_typing_attempt(username, correct, wpm, accuracy, metrics):
+    try:
+        _typing_worksheet().append_row([
+            username,
+            datetime.now(timezone.utc).isoformat(),
+            correct,
+            wpm,
+            accuracy,
+            metrics.get("avg_interval_ms"),
+            metrics.get("interval_std_ms"),
+            metrics.get("backspaces"),
+            metrics.get("motion_std"),
+        ])
+    except Exception:
+        pass
+
 
 # ------------------------------
 # Logo icon (head/lighthouse mark only, cropped from the full logo,
@@ -516,15 +660,91 @@ div[class*="st-key-game_picker_container"] div[role="radiogroup"] label > div:fi
 # Top bar
 # ------------------------------
 _icon_tag_b64 = base64.b64encode(ICON_BYTES).decode("utf-8")
-st.markdown(f"""
-<div class="clariti-topbar">
-    <img src="data:image/png;base64,{_icon_tag_b64}" width="56" height="56" />
-    <div>
-        <p class="clariti-title">Clariti</p>
-        <p class="clariti-tagline">Your beacon for cognitive wellness</p>
+st.session_state.setdefault("auth_username", None)
+
+_top_col1, _top_col2 = st.columns([5, 1])
+with _top_col1:
+    st.markdown(f"""
+    <div class="clariti-topbar">
+        <img src="data:image/png;base64,{_icon_tag_b64}" width="56" height="56" />
+        <div>
+            <p class="clariti-title">Clariti</p>
+            <p class="clariti-tagline">Your beacon for cognitive wellness</p>
+        </div>
     </div>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
+with _top_col2:
+    if st.session_state.auth_username:
+        st.caption(f"👤 {st.session_state.auth_username}")
+        if st.button("Log out", key="logout_btn", use_container_width=True):
+            st.session_state.auth_username = None
+            st.rerun()
+
+# ------------------------------
+# Auth gate — nothing below this renders until the visitor is logged
+# in. Accounts live in the Users sheet, so this also doubles as the
+# Google Sheets connectivity check.
+# ------------------------------
+if not st.session_state.auth_username:
+    if not sheets_configured():
+        st.error(
+            "Accounts aren't set up yet — Google Sheets credentials are "
+            "missing from this app's secrets. See "
+            "`.streamlit/secrets.toml.example` for what's needed."
+        )
+        st.stop()
+
+    with st.container(key="card_auth"):
+        tab_login, tab_signup = st.tabs(["Log In", "Sign Up"])
+
+        with tab_login:
+            login_username = st.text_input("Username", key="login_username")
+            login_password = st.text_input(
+                "Password", type="password", key="login_password"
+            )
+            if st.button("Log In", key="login_submit", use_container_width=True):
+                if not login_username.strip() or not login_password:
+                    st.error("Enter a username and password.")
+                else:
+                    try:
+                        ok = verify_login(login_username, login_password)
+                    except Exception as e:
+                        st.error(f"Couldn't reach Google Sheets: {e}")
+                    else:
+                        if ok:
+                            st.session_state.auth_username = login_username.strip()
+                            st.rerun()
+                        else:
+                            st.error("Incorrect username or password.")
+
+        with tab_signup:
+            signup_username = st.text_input("Choose a username", key="signup_username")
+            signup_password = st.text_input(
+                "Choose a password", type="password", key="signup_password"
+            )
+            signup_password_confirm = st.text_input(
+                "Confirm password", type="password", key="signup_password_confirm"
+            )
+            if st.button("Sign Up", key="signup_submit", use_container_width=True):
+                if not signup_username.strip() or not signup_password:
+                    st.error("Username and password are required.")
+                elif signup_password != signup_password_confirm:
+                    st.error("Passwords don't match.")
+                else:
+                    try:
+                        taken = find_user(signup_username) is not None
+                    except Exception as e:
+                        taken = False
+                        st.error(f"Couldn't reach Google Sheets: {e}")
+                    else:
+                        if taken:
+                            st.error("That username is already taken.")
+                        else:
+                            create_user(signup_username, signup_password)
+                            st.session_state.auth_username = signup_username.strip()
+                            st.rerun()
+
+    st.stop()
 
 # ------------------------------
 # Horizontal top navigation (replaces the old sidebar nav)
@@ -617,6 +837,13 @@ def checkin_bar():
             st.write("")
             st.checkbox("Drank enough water", key="water")
 
+        if sheets_configured():
+            if st.button("💾 Save Today's Check-In", key="save_checkin", use_container_width=True):
+                if log_checkin(st.session_state.auth_username):
+                    st.success("Saved to your account.")
+                else:
+                    st.error("Couldn't save — check the Google Sheets connection.")
+
 
 steps = st.session_state.steps
 exercise_minutes = st.session_state.exercise_minutes
@@ -647,6 +874,8 @@ if games >= 1:
 
 if water:
     score += 10
+
+st.session_state.last_score = score
 
 
 def page_hero(icon, title, tagline, gradient):
@@ -1257,7 +1486,8 @@ def process_typing_result(result):
         "motion_std": result.get("motion_std"),
     }
 
-    if typed == target:
+    correct = typed == target
+    if correct:
         st.session_state.tt_streak += 1
         st.session_state.tt_best_wpm = max(st.session_state.get("tt_best_wpm", 0), wpm)
         st.session_state.tt_feedback = f"correct:{wpm}:{accuracy}"
@@ -1269,6 +1499,12 @@ def process_typing_result(result):
         st.session_state.tt_counted = True
         st.session_state.tt_just_completed = True
         award_game_completion()
+
+    if sheets_configured() and st.session_state.get("auth_username"):
+        log_typing_attempt(
+            st.session_state.auth_username, correct, wpm, accuracy,
+            st.session_state.tt_last_metrics,
+        )
 
     new_typing_phrase()
 
