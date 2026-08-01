@@ -975,6 +975,10 @@ WORD_WIN_STREAK = 5
 WORD_LIST = [
     "MEMORY", "FOCUS", "BALANCE", "HEALTHY", "SLEEP", "BRAIN", "PUZZLE",
     "MINDFUL", "ENERGY", "CALM", "WELLNESS", "CLARITY",
+    "THERAPY", "JOURNAL", "GRATEFUL", "STRETCH", "HYDRATE", "PATIENCE",
+    "AWARENESS", "VITALITY", "RECOVERY", "ROUTINE", "RESILIENT", "NEURON",
+    "RHYTHM", "STAMINA", "SUNLIGHT", "CONNECT", "SUPPORT", "SOOTHE",
+    "REFRESH", "STEADY",
 ]
 
 
@@ -1143,6 +1147,100 @@ def number_recall_game():
 
 
 # ------------------------------
+# Typing Test
+# ------------------------------
+TYPING_WIN_STREAK = 5
+TYPING_PHRASES = [
+    "the quick brown fox jumps over the lazy dog",
+    "clarity of mind begins with a clear morning routine",
+    "regular exercise supports long term brain health",
+    "a good nights sleep helps the brain consolidate memories",
+    "mindful breathing can reduce stress and improve focus",
+    "small healthy habits build up to big results over time",
+    "walking outside for ten minutes can lift your mood",
+    "staying hydrated helps keep your mind sharp",
+    "practice makes progress not perfection",
+    "every day is a fresh start for your wellness journey",
+    "early detection can make treatment far more effective",
+    "a balanced diet supports both body and brain",
+]
+
+
+def new_typing_phrase():
+    st.session_state.tt_phrase = random.choice(TYPING_PHRASES)
+    st.session_state.tt_start_time = time.time()
+
+
+def new_typing_game():
+    st.session_state.tt_streak = 0
+    st.session_state.tt_best_wpm = st.session_state.get("tt_best_wpm", 0)
+    st.session_state.tt_counted = False
+    st.session_state.tt_just_completed = False
+    st.session_state.tt_feedback = None
+    new_typing_phrase()
+
+
+def submit_typing():
+    typed = st.session_state.get("tt_input") or ""
+    target = st.session_state.tt_phrase
+    elapsed_minutes = max(time.time() - st.session_state.tt_start_time, 0.01) / 60
+    wpm = round(len(target.split()) / elapsed_minutes)
+
+    matches = sum(1 for a, b in zip(typed.strip().lower(), target) if a == b)
+    accuracy = round((matches / len(target)) * 100) if target else 0
+
+    if typed.strip().lower() == target:
+        st.session_state.tt_streak += 1
+        st.session_state.tt_best_wpm = max(st.session_state.get("tt_best_wpm", 0), wpm)
+        st.session_state.tt_feedback = f"correct:{wpm}:{accuracy}"
+    else:
+        st.session_state.tt_streak = 0
+        st.session_state.tt_feedback = f"wrong:{accuracy}"
+
+    if st.session_state.tt_streak >= TYPING_WIN_STREAK and not st.session_state.get("tt_counted"):
+        st.session_state.tt_counted = True
+        st.session_state.tt_just_completed = True
+        award_game_completion()
+
+    new_typing_phrase()
+    st.session_state.tt_input = ""
+
+
+def typing_test_game():
+    if "tt_phrase" not in st.session_state:
+        new_typing_game()
+
+    m1, m2, m3 = st.columns([2, 2, 2])
+    m1.metric("Streak", st.session_state.tt_streak)
+    m2.metric("Best WPM", st.session_state.get("tt_best_wpm", 0))
+    if m3.button("New Round", key="tt_new_round", use_container_width=True):
+        new_typing_game()
+        st.rerun()
+
+    fb = st.session_state.get("tt_feedback")
+    if fb and fb.startswith("correct:"):
+        _, wpm, accuracy = fb.split(":")
+        st.success(f"Nice! {wpm} WPM at {accuracy}% character accuracy.")
+    elif fb and fb.startswith("wrong:"):
+        accuracy = fb.split(":", 1)[1]
+        st.error(f"Not quite — {accuracy}% character accuracy. Try to match it exactly.")
+
+    st.markdown(f"### Type this:\n> {st.session_state.tt_phrase}")
+    st.text_input(
+        "Type it here", key="tt_input", label_visibility="collapsed",
+        placeholder="Start typing...",
+    )
+    st.button("Submit", key="tt_submit", on_click=submit_typing, use_container_width=True)
+
+    if st.session_state.get("tt_just_completed"):
+        st.balloons()
+        st.success(
+            f"{TYPING_WIN_STREAK} phrases in a row! Logged to today's Brain Games count."
+        )
+        st.session_state.tt_just_completed = False
+
+
+# ------------------------------
 # Brain game picker — a random game is shown each time, with a
 # "surprise me" reroll so it doesn't feel like the same game every visit.
 # ------------------------------
@@ -1166,6 +1264,11 @@ GAME_REGISTRY = {
         "label": "🔢 Number Recall",
         "desc": "Memorize a number sequence, then type it back — it grows each round.",
         "fn": number_recall_game,
+    },
+    "typing": {
+        "label": "⌨️ Typing Test",
+        "desc": f"Type {TYPING_WIN_STREAK} phrases in a row accurately to complete a round.",
+        "fn": typing_test_game,
     },
 }
 
