@@ -33,10 +33,10 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-    --navy: #141A33;
-    --navy-soft: #1E2547;
-    --indigo: #4B3FD6;
-    --indigo-light: #7C6AE8;
+    --navy: #560BAD;
+    --navy-soft: #3F37C9;
+    --indigo: #3F37C9;
+    --indigo-light: #4895EF;
     --amber: #F5A623;
     --bg: #F5F6FB;
     --card-bg: #FFFFFF;
@@ -151,7 +151,7 @@ div[class*="st-key-nav_container"] div[role="radiogroup"] label:hover {
 }
 
 div[class*="st-key-nav_container"] div[role="radiogroup"] label:has(input:checked) {
-    background: rgba(124,106,232,0.45);
+    background: rgba(72,149,239,0.45);
     font-weight: 700;
 }
 
@@ -220,7 +220,7 @@ div[class*="st-key-mm_grid_container"] .stButton > button {
 
 div[class*="st-key-mm_grid_container"] .stButton > button:hover {
     background: #F5F6FB;
-    border-color: #7C6AE8;
+    border-color: #4895EF;
 }
 
 /* Active flipped card */
@@ -269,7 +269,7 @@ div[data-testid="stCheckbox"] label:hover {
 /* ---------- Distinctive Snapshot hero ---------- */
 div[class*="st-key-card_dash_snapshot"] {
     background:
-        radial-gradient(circle at 15% 20%, rgba(124,106,232,0.35), transparent 45%),
+        radial-gradient(circle at 15% 20%, rgba(72,149,239,0.35), transparent 45%),
         radial-gradient(circle at 85% 80%, rgba(245,166,35,0.28), transparent 45%),
         linear-gradient(135deg, var(--navy) 0%, var(--indigo) 100%);
     border: none;
