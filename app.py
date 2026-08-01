@@ -282,6 +282,81 @@ div[data-testid="stCheckbox"] label:hover {
     color: var(--indigo) !important;
 }
 
+
+/* ---------- Distinctive Snapshot hero ---------- */
+div[class*="st-key-card_dash_snapshot"] {
+    background:
+        radial-gradient(circle at 15% 20%, rgba(124,106,232,0.35), transparent 45%),
+        radial-gradient(circle at 85% 80%, rgba(245,166,35,0.28), transparent 45%),
+        linear-gradient(135deg, var(--navy) 0%, var(--indigo) 100%);
+    border: none;
+}
+
+div[class*="st-key-card_dash_snapshot"] h2,
+div[class*="st-key-card_dash_snapshot"] h3,
+div[class*="st-key-card_dash_snapshot"] p,
+div[class*="st-key-card_dash_snapshot"] span,
+div[class*="st-key-card_dash_snapshot"] label,
+div[class*="st-key-card_dash_snapshot"] caption {
+    color: #FFFFFF !important;
+}
+
+div[class*="st-key-card_dash_snapshot"] div[data-testid="stMetric"] {
+    background: rgba(255,255,255,0.10);
+    border: 1px solid rgba(255,255,255,0.22);
+}
+
+div[class*="st-key-card_dash_snapshot"] div[data-testid="stMetricValue"] {
+    color: #FFFFFF !important;
+}
+
+div[class*="st-key-card_dash_snapshot"] div[data-testid="stMetricLabel"] {
+    color: rgba(255,255,255,0.78) !important;
+}
+
+
+/* ---------- Hero brain game (front and center) ---------- */
+div[class*="st-key-card_dash_game"] {
+    background: linear-gradient(135deg, #FFF8E8 0%, #FFFFFF 100%);
+    border: 2px solid var(--amber);
+}
+
+
+/* ---------- Front-page check-in bar ---------- */
+div[class*="st-key-card_checkin_bar"] {
+    background: linear-gradient(180deg, #FFFFFF 0%, #F9FAFF 100%);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.4rem 1.8rem 0.4rem 1.8rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 1px 3px rgba(16,24,64,0.06);
+}
+
+
+/* ---------- Clickable goal + metric links ---------- */
+div[class*="st-key-goal_btn"] .stButton > button,
+div[class*="st-key-metric_link"] .stButton > button {
+    width: 100%;
+    text-align: left;
+    background: #F9FAFF;
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    font-weight: 600;
+    border-radius: 10px;
+}
+
+div[class*="st-key-goal_btn"] .stButton > button:hover,
+div[class*="st-key-metric_link"] .stButton > button:hover {
+    border-color: var(--indigo-light);
+    color: var(--indigo);
+    background: #F1F1FC;
+}
+
+div[class*="st-key-metric_link"] .stButton > button {
+    font-size: 0.78rem;
+    padding: 4px 10px;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -309,69 +384,95 @@ st.sidebar.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
+NAV_OPTIONS = [
+    "Dashboard",
+    "Exercise",
+    "Sleep",
+    "Meditation",
+    "Brain Games",
+    "Doctor",
+    "About"
+]
+
+st.session_state.setdefault("nav_page", "Dashboard")
+
+
+def go_to(target_page):
+    # Must run as a widget on_click callback: Streamlit forbids setting
+    # st.session_state["nav_page"] directly once the nav radio (which owns
+    # that key) has already been instantiated earlier in the same run.
+    st.session_state.nav_page = target_page
+
+
+def toggle_water():
+    st.session_state.water = not st.session_state.water
+
+
 with st.sidebar.container(key="nav_container"):
     page = st.radio(
         "Navigation",
-        [
-            "Dashboard",
-            "Exercise",
-            "Sleep",
-            "Meditation",
-            "Brain Games",
-            "Doctor",
-            "About"
-        ],
+        NAV_OPTIONS,
+        key="nav_page",
         label_visibility="collapsed",
     )
 
 # ------------------------------
-# Daily inputs (kept in session_state so every page sees the same values)
+# Today's check-in values.
+# The inputs themselves live on the Dashboard (front page) via
+# checkin_bar() below; every page just reads the shared session_state
+# values so the score and pages stay in sync no matter where you last
+# edited them.
 # ------------------------------
-st.sidebar.divider()
-st.sidebar.header("Today's Check-In")
+CHECKIN_DEFAULTS = {
+    "steps": 6000,
+    "exercise_minutes": 30,
+    "sleep_hours": 8.0,
+    "meditation_minutes": 5,
+    "games": 1,
+    "water": False,
+}
+for _key, _default in CHECKIN_DEFAULTS.items():
+    st.session_state.setdefault(_key, _default)
 
-steps = st.sidebar.slider(
-    "Steps Walked",
-    0,
-    20000,
-    5000,
-    100
-)
+STEP_OPTIONS = [0, 2000, 4000, 6000, 8000, 10000, 12000, 15000, 20000]
+EXERCISE_OPTIONS = [0, 10, 15, 20, 30, 45, 60, 90, 120]
+SLEEP_OPTIONS = [4.0, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 10.0]
+MEDITATION_OPTIONS = [0, 5, 10, 15, 20, 30, 45, 60]
+GAMES_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
-exercise_minutes = st.sidebar.slider(
-    "Exercise (minutes)",
-    0,
-    180,
-    30,
-    5
-)
 
-sleep_hours = st.sidebar.slider(
-    "Hours Slept",
-    0.0,
-    12.0,
-    8.0,
-    0.5
-)
+def checkin_bar():
+    with st.container(key="card_checkin_bar"):
+        st.subheader("Today's Check-In")
+        st.caption("Simple dropdowns — pick what's closest to today.")
 
-meditation_minutes = st.sidebar.slider(
-    "Meditation (minutes)",
-    0,
-    60,
-    5,
-    5
-)
+        c1, c2, c3, c4, c5, c6 = st.columns(6)
 
-games = st.sidebar.slider(
-    "Brain Games Completed",
-    0,
-    10,
-    1
-)
+        with c1:
+            st.selectbox(
+                "Steps Walked", STEP_OPTIONS, key="steps",
+                format_func=lambda v: f"{v:,}"
+            )
+        with c2:
+            st.selectbox("Exercise (min)", EXERCISE_OPTIONS, key="exercise_minutes")
+        with c3:
+            st.selectbox("Hours Slept", SLEEP_OPTIONS, key="sleep_hours")
+        with c4:
+            st.selectbox("Meditation (min)", MEDITATION_OPTIONS, key="meditation_minutes")
+        with c5:
+            st.selectbox("Brain Games", GAMES_OPTIONS, key="games")
+        with c6:
+            st.write("")
+            st.write("")
+            st.checkbox("Drank enough water", key="water")
 
-water = st.sidebar.checkbox(
-    "I drank enough water today"
-)
+
+steps = st.session_state.steps
+exercise_minutes = st.session_state.exercise_minutes
+sleep_hours = st.session_state.sleep_hours
+meditation_minutes = st.session_state.meditation_minutes
+games = st.session_state.games
+water = st.session_state.water
 
 # ------------------------------
 # Wellness score
@@ -411,37 +512,33 @@ def feedback_message(score):
 def goal_checklist():
 
     goals = [
-        ("Walk 8,000 Steps", steps >= 8000),
-        ("Exercise 30 Minutes", exercise_minutes >= 30),
-        ("Sleep 8 Hours", sleep_hours >= 8),
-        ("Meditate 10 Minutes", meditation_minutes >= 10),
-        ("Complete a Brain Game", games >= 1),
-        ("Drink Enough Water", water)
+        ("Walk 8,000 Steps", steps >= 8000, "Exercise"),
+        ("Exercise 30 Minutes", exercise_minutes >= 30, "Exercise"),
+        ("Sleep 8 Hours", sleep_hours >= 8, "Sleep"),
+        ("Meditate 10 Minutes", meditation_minutes >= 10, "Meditation"),
+        ("Complete a Brain Game", games >= 1, "Brain Games"),
+        ("Drink Enough Water", water, None),
     ]
 
-    for text, completed in goals:
+    for i, (text, completed, target_page) in enumerate(goals):
+        icon = "✅" if completed else "⬜"
 
-        if completed:
-            icon = "✅"
-        else:
-            icon = "⬜"
-
-        st.markdown(
-            f"""
-            <div style="
-                background:#F9FAFF;
-                border:1px solid #E5E7F2;
-                border-radius:10px;
-                padding:12px;
-                margin-bottom:8px;
-                font-weight:600;
-                color:#1B1F30;
-            ">
-                {icon} {text}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        with st.container(key=f"goal_btn_{i}"):
+            if target_page is not None:
+                st.button(
+                    f"{icon}  {text}  →",
+                    key=f"goal_click_{i}",
+                    use_container_width=True,
+                    on_click=go_to,
+                    args=(target_page,),
+                )
+            else:
+                st.button(
+                    f"{icon}  {text}  (tap to toggle)",
+                    key=f"goal_click_{i}",
+                    use_container_width=True,
+                    on_click=toggle_water,
+                )
 
 
 
@@ -453,8 +550,9 @@ def doctor_expander():
     st.write(
         """
         A healthcare professional can help evaluate changes in memory,
-        concentration, mood, or daily functioning. Early conversations can
-        help identify concerns and create a plan for maintaining brain health.
+        concentration, mood, or daily functioning. Check anything that's
+        applied to you recently for a real, personalized read on whether
+        it's worth bringing up.
         """
     )
 
@@ -463,24 +561,25 @@ def doctor_expander():
         "Difficulty focusing or completing normal tasks",
         "Changes in sleep patterns or energy levels",
         "Increased confusion or trouble finding words",
-        "Concerns from family or close friends"
+        "Concerns from family or close friends",
     ]
 
-    for concern in concerns:
-        st.markdown(
-            f"""
-            <div style="
-                background:#F9FAFF;
-                border:1px solid #E5E7F2;
-                border-radius:10px;
-                padding:12px;
-                margin-bottom:8px;
-                font-weight:600;
-            ">
-                ⚠️ {concern}
-            </div>
-            """,
-            unsafe_allow_html=True
+    checked = 0
+    for i, concern in enumerate(concerns):
+        if st.checkbox(concern, key=f"concern_{i}"):
+            checked += 1
+
+    if checked == 0:
+        st.success("No concerns checked — keep up your healthy habits.")
+    elif checked <= 2:
+        st.warning(
+            f"{checked} of 5 noted. Worth keeping an eye on — mention it at "
+            "your next regular checkup."
+        )
+    else:
+        st.error(
+            f"{checked} of 5 noted. It's a good idea to talk to a doctor about "
+            "these changes soon."
         )
 
     st.divider()
@@ -491,38 +590,19 @@ def doctor_expander():
         "Track changes in memory or focus",
         "Write down questions before your appointment",
         "Bring a list of medications or supplements",
-        "Share changes in sleep, exercise, and daily habits"
+        "Share changes in sleep, exercise, and daily habits",
     ]
 
-    for item in preparation:
-        st.markdown(
-            f"""
-            <div style="
-                background:#FFFFFF;
-                border:1px solid #E5E7F2;
-                border-radius:10px;
-                padding:10px;
-                margin-bottom:6px;
-            ">
-                ✅ {item}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+    prep_done = 0
+    for i, item in enumerate(preparation):
+        if st.checkbox(item, key=f"prep_{i}"):
+            prep_done += 1
 
-    st.divider()
-
-    st.subheader("Referral Request")
-
-    referral = st.checkbox(
-        "I would like information about scheduling a doctor visit"
-    )
-
-    if referral:
-        st.success(
-            "Consider contacting your primary care provider "
-            "to discuss your concerns and next steps."
-        )
+    st.progress(prep_done / len(preparation))
+    if prep_done == len(preparation):
+        st.success("You're fully prepared for a doctor visit.")
+    else:
+        st.caption(f"{prep_done} of {len(preparation)} preparation steps complete.")
 
 
 # ------------------------------
@@ -543,6 +623,7 @@ def new_memory_game(pairs=8):
     st.session_state.mm_moves = 0
     st.session_state.mm_won = False
     st.session_state.mm_previewing = True
+    st.session_state.mm_counted = False
 
 
 def select_card(idx):
@@ -567,6 +648,11 @@ def select_card(idx):
             st.session_state.mm_choice_two = None
             if len(st.session_state.mm_matched) == len(st.session_state.mm_cards):
                 st.session_state.mm_won = True
+                if not st.session_state.get("mm_counted"):
+                    st.session_state.mm_counted = True
+                    st.session_state.games = min(
+                        st.session_state.get("games", 0) + 1, max(GAMES_OPTIONS)
+                    )
         else:
             st.session_state.mm_awaiting_continue = True
 
@@ -651,7 +737,7 @@ def memory_matching_game():
         st.balloons()
         st.success(
             f"You matched every pair in {st.session_state.mm_moves} moves! "
-            "Update the 'Brain Games Completed' slider in the sidebar to log it."
+            "Logged automatically to today's Brain Games count."
         )
 
 
@@ -659,17 +745,59 @@ def memory_matching_game():
 # Dashboard
 # ------------------------------
 if page == "Dashboard":
+    with st.container(key="card_dash_game"):
+        st.subheader("🎮 Today's Brain Game")
+        st.caption("Start here — a quick game is the fastest way to warm up your brain today.")
+        memory_matching_game()
+
+    checkin_bar()
+
     with st.container(key="card_dash_snapshot"):
         st.subheader("Today's Snapshot")
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Steps", steps)
-        col2.metric("Sleep", f"{sleep_hours} hrs")
-        col3.metric("Games", games)
-        col4.metric("Score", f"{score}/100")
+
+        with col1:
+            st.metric("Steps", f"{steps:,}")
+            with st.container(key="metric_link_steps"):
+                st.button(
+                    "View Exercise →", key="metric_click_steps",
+                    use_container_width=True, on_click=go_to, args=("Exercise",),
+                )
+
+        with col2:
+            st.metric("Sleep", f"{sleep_hours} hrs")
+            with st.container(key="metric_link_sleep"):
+                st.button(
+                    "View Sleep →", key="metric_click_sleep",
+                    use_container_width=True, on_click=go_to, args=("Sleep",),
+                )
+
+        with col3:
+            st.metric("Games", games)
+            with st.container(key="metric_link_games"):
+                st.button(
+                    "Play a Game →", key="metric_click_games",
+                    use_container_width=True, on_click=go_to, args=("Brain Games",),
+                )
+
+        with col4:
+            st.metric("Score", f"{score}/100")
+            with st.container(key="metric_link_score"):
+                if st.button("How is this scored?", key="metric_click_score", use_container_width=True):
+                    st.session_state.show_score_info = not st.session_state.get("show_score_info", False)
+
         st.progress(score / 100)
+
+        if st.session_state.get("show_score_info"):
+            st.info(
+                "**Score breakdown:** Steps 8,000+ (20 pts) · Exercise 30+ min (20 pts) · "
+                "Sleep 8+ hrs (20 pts) · Meditation 10+ min (15 pts) · 1+ brain game (15 pts) · "
+                "Enough water (10 pts)."
+            )
 
     with st.container(key="card_dash_goals"):
         st.subheader("Today's Goals")
+        st.caption("Tap any goal to jump straight to it.")
         goal_checklist()
 
     with st.container(key="card_dash_feedback"):
@@ -768,6 +896,13 @@ elif page == "Exercise":
         col2.info("🎯 Focus\n\nHelps attention and concentration.")
         col3.info("😊 Mood\n\nCan reduce stress and improve mental well-being.")
 
+        pct_steps = min(steps / 8000, 1.0) * 100
+        pct_exercise_min = min(exercise_minutes / 30, 1.0) * 100
+        st.markdown(
+            f"**Right now:** you're at **{pct_steps:.0f}%** of today's step goal and "
+            f"**{pct_exercise_min:.0f}%** of today's exercise-minutes goal."
+        )
+
 
 
 # ------------------------------
@@ -847,7 +982,13 @@ elif page == "Sleep":
         col3.info(
             "🛡️ Brain Health\n\nSupports long-term cognitive wellness."
         )
-        # ------------------------------
+
+        pct_sleep = min(sleep_hours / 8, 1.0) * 100
+        st.markdown(
+            f"**Right now:** you're at **{pct_sleep:.0f}%** of tonight's 8-hour sleep goal."
+        )
+
+# ------------------------------
 # Meditation
 # ------------------------------
 elif page == "Meditation":
@@ -930,6 +1071,25 @@ elif page == "Meditation":
 
         col3.info(
             "💭 Awareness\n\nEncourages mindfulness and emotional balance."
+        )
+
+        pct_meditation = min(meditation_minutes / 10, 1.0) * 100
+        st.markdown(
+            f"**Right now:** today's {meditation_minutes} logged minutes put you at "
+            f"**{pct_meditation:.0f}%** of your 10-minute goal."
+        )
+
+
+    with st.container(key="card_meditation_video"):
+        st.subheader("Watch: A Short Guided Breathing Meditation")
+        st.caption(
+            "A 2-minute guided breathing exercise you can follow along with right now."
+        )
+        st.video("https://www.youtube.com/watch?v=cEqZthCaMpo")
+        st.info(
+            "**How this helps:** slow, guided breathing lowers stress hormones and "
+            "activates the body's relaxation response, which supports focus and "
+            "emotional regulation — two things closely tied to long-term brain health."
         )
 
 
