@@ -37,6 +37,29 @@ def keystroke_input(key):
 
 
 # ------------------------------
+# Stroop task bridge (used by the Color Match brain game).
+#
+# Same rationale as the keystroke bridge: reaction time needs
+# browser-side performance.now() precision, not a server round trip.
+# This one also receives dynamic args each round (the word/ink pair)
+# via the "streamlit:render" postMessage — confirmed empirically with
+# a throwaway test app before building the real thing, since it's a
+# different message than the value-reporting one keystroke_component
+# relies on.
+# ------------------------------
+_STROOP_COMPONENT_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "stroop_component"
+)
+_stroop_component = components.declare_component(
+    "stroop_capture", path=_STROOP_COMPONENT_DIR
+)
+
+
+def stroop_input(word, ink_color, key):
+    return _stroop_component(word=word, ink_color=ink_color, key=key, default=None)
+
+
+# ------------------------------
 # Google Sheets backend (accounts + per-user activity log).
 #
 # Needs [sheets] and [gcp_service_account] in .streamlit/secrets.toml
@@ -110,6 +133,16 @@ def _typing_worksheet():
     )
 
 
+def _stroop_worksheet():
+    return _get_or_create_worksheet(
+        "StroopAttempts",
+        [
+            "username", "timestamp", "word", "ink_color", "chosen_color",
+            "correct", "reaction_ms", "motion_std",
+        ],
+    )
+
+
 def hash_password(password, salt=None):
     salt = salt or os.urandom(16).hex()
     digest = hashlib.pbkdf2_hmac(
@@ -173,6 +206,84 @@ def log_typing_attempt(username, correct, wpm, accuracy, metrics):
         ])
     except Exception:
         pass
+
+
+def log_stroop_attempt(username, word, ink_color, chosen_color, correct, reaction_ms, motion_std):
+    try:
+        _stroop_worksheet().append_row([
+            username,
+            datetime.now(timezone.utc).isoformat(),
+            word, ink_color, chosen_color, correct, reaction_ms, motion_std,
+        ])
+    except Exception:
+        pass
+
+
+def _recent_rows(worksheet_fn, username, limit=10):
+    rows = [r for r in worksheet_fn().get_all_records() if r.get("username") == username]
+    return rows[-limit:] if rows else []
+
+
+def reveal_my_patterns(username):
+    st.caption(
+        "These are simple descriptive patterns from your own activity here — "
+        "not a medical assessment of any kind. If anything below concerns you, "
+        "the checklist above is a good place to start, and a doctor is always "
+        "the right next step for an actual answer."
+    )
+
+    try:
+        typing_rows = [r for r in _typing_worksheet().get_all_records() if r.get("username") == username]
+        stroop_rows = [r for r in _stroop_worksheet().get_all_records() if r.get("username") == username]
+    except Exception as e:
+        st.error(f"Couldn't reach Google Sheets: {e}")
+        return
+
+    if not typing_rows and not stroop_rows:
+        st.info("Not enough data yet — play a few rounds of Typing Test or Color Match first.")
+        return
+
+    if typing_rows:
+        st.markdown("**⌨️ Typing**")
+        latest = typing_rows[-1]
+        prior = typing_rows[:-1][-10:]
+        if prior:
+            avg_wpm = sum(float(r["wpm"]) for r in prior) / len(prior)
+            avg_interval = [float(r["avg_interval_ms"]) for r in prior if r.get("avg_interval_ms") not in (None, "")]
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Latest WPM", latest.get("wpm"), delta=round(float(latest.get("wpm") or 0) - avg_wpm, 1))
+            c2.metric("Latest Accuracy", f"{latest.get('accuracy')}%")
+            if avg_interval and latest.get("avg_interval_ms") not in (None, ""):
+                c3.metric(
+                    "Key Interval vs. Recent Avg",
+                    f"{float(latest['avg_interval_ms']):.0f}ms",
+                    delta=round(float(latest["avg_interval_ms"]) - (sum(avg_interval) / len(avg_interval)), 1),
+                    delta_color="inverse",
+                )
+            st.caption(f"Compared against your last {len(prior)} attempt(s).")
+        else:
+            st.caption("First attempt logged — play a few more rounds to see how it compares.")
+
+    if stroop_rows:
+        st.markdown("**🎨 Color Match (Stroop)**")
+        latest_s = stroop_rows[-1]
+        prior_s = stroop_rows[:-1][-10:]
+        recent_s = stroop_rows[-10:]
+        if prior_s:
+            prior_rt = [float(r["reaction_ms"]) for r in prior_s if r.get("reaction_ms") not in (None, "")]
+            recent_correct = sum(1 for r in recent_s if str(r.get("correct")).upper() == "TRUE")
+            c1, c2 = st.columns(2)
+            if prior_rt and latest_s.get("reaction_ms") not in (None, ""):
+                c1.metric(
+                    "Latest Reaction Time",
+                    f"{float(latest_s['reaction_ms']):.0f}ms",
+                    delta=round(float(latest_s["reaction_ms"]) - (sum(prior_rt) / len(prior_rt)), 1),
+                    delta_color="inverse",
+                )
+            c2.metric(f"Accuracy (last {len(recent_s)})", f"{round(recent_correct / len(recent_s) * 100)}%")
+            st.caption(f"Reaction time compared against your prior {len(prior_s)} attempt(s).")
+        else:
+            st.caption("First attempt logged — play a few more rounds to see how it compares.")
 
 
 # ------------------------------
@@ -1562,6 +1673,116 @@ def typing_test_game():
 
 
 # ------------------------------
+# Color Match (Stroop task)
+# ------------------------------
+STROOP_WIN_STREAK = 5
+STROOP_COLORS = [
+    ("RED", "#E53935"),
+    ("BLUE", "#1E88E5"),
+    ("GREEN", "#43A047"),
+    ("YELLOW", "#FDD835"),
+]
+
+
+def new_stroop_round():
+    word, _ = random.choice(STROOP_COLORS)
+    # Ink color must differ from the word's own meaning — that
+    # mismatch is the whole point of a Stroop trial.
+    _, ink_color = random.choice([c for c in STROOP_COLORS if c[0] != word])
+    st.session_state.sg_word = word
+    st.session_state.sg_ink_color = ink_color
+
+
+def new_stroop_game():
+    st.session_state.sg_streak = 0
+    st.session_state.sg_best_streak = st.session_state.get("sg_best_streak", 0)
+    st.session_state.sg_counted = False
+    st.session_state.sg_just_completed = False
+    st.session_state.sg_feedback = None
+    st.session_state.sg_last_metrics = None
+    new_stroop_round()
+
+
+def process_stroop_result(result):
+    correct = bool(result.get("correct"))
+    reaction_ms = result.get("reaction_ms") or 0
+
+    st.session_state.sg_last_metrics = {
+        "reaction_ms": reaction_ms,
+        "motion_std": result.get("motion_std"),
+    }
+
+    if correct:
+        st.session_state.sg_streak += 1
+        st.session_state.sg_best_streak = max(
+            st.session_state.get("sg_best_streak", 0), st.session_state.sg_streak
+        )
+        st.session_state.sg_feedback = f"correct:{reaction_ms}"
+    else:
+        st.session_state.sg_streak = 0
+        st.session_state.sg_feedback = f"wrong:{reaction_ms}"
+
+    if st.session_state.sg_streak >= STROOP_WIN_STREAK and not st.session_state.get("sg_counted"):
+        st.session_state.sg_counted = True
+        st.session_state.sg_just_completed = True
+        award_game_completion()
+
+    if sheets_configured() and st.session_state.get("auth_username"):
+        log_stroop_attempt(
+            st.session_state.auth_username,
+            result.get("word"), result.get("ink_color"), result.get("chosen_color"),
+            correct, reaction_ms, result.get("motion_std"),
+        )
+
+    new_stroop_round()
+
+
+def stroop_game():
+    if "sg_word" not in st.session_state:
+        new_stroop_game()
+
+    m1, m2, m3 = st.columns([2, 2, 2])
+    m1.metric("Streak", st.session_state.sg_streak)
+    m2.metric("Best Streak", st.session_state.get("sg_best_streak", 0))
+    if m3.button("New Round", key="sg_new_round", use_container_width=True):
+        new_stroop_game()
+        st.rerun()
+
+    fb = st.session_state.get("sg_feedback")
+    if fb and fb.startswith("correct:"):
+        ms = fb.split(":", 1)[1]
+        st.success(f"Correct! {ms}ms reaction time.")
+    elif fb and fb.startswith("wrong:"):
+        st.error("Not quite — that's the word, not the ink color. Try again.")
+
+    result = stroop_input(st.session_state.sg_word, st.session_state.sg_ink_color, key="sg_component")
+
+    # Same one-shot consumption pattern as the other games: the
+    # component keeps returning its last-sent value across reruns it
+    # didn't cause, so only act on a genuinely new submission.
+    if result and result.get("nonce") != st.session_state.get("sg_last_nonce"):
+        st.session_state.sg_last_nonce = result["nonce"]
+        process_stroop_result(result)
+        st.rerun()
+
+    if st.session_state.get("sg_just_completed"):
+        st.balloons()
+        st.success(
+            f"{STROOP_WIN_STREAK} correct in a row! Logged to today's Brain Games count."
+        )
+        st.session_state.sg_just_completed = False
+
+    metrics = st.session_state.get("sg_last_metrics")
+    if metrics:
+        motion_note = (
+            f", motion variance {metrics['motion_std']:.3f}"
+            if metrics.get("motion_std") is not None
+            else ""
+        )
+        st.caption(f"Last response: {metrics['reaction_ms']}ms{motion_note}")
+
+
+# ------------------------------
 # Brain game picker — a random game is shown each time, with a
 # "surprise me" reroll so it doesn't feel like the same game every visit.
 # ------------------------------
@@ -1590,6 +1811,11 @@ GAME_REGISTRY = {
         "label": "⌨️ Typing Test",
         "desc": f"Type {TYPING_WIN_STREAK} phrases in a row accurately to complete a round.",
         "fn": typing_test_game,
+    },
+    "stroop": {
+        "label": "🎨 Color Match",
+        "desc": f"Click the ink color, not the word — {STROOP_WIN_STREAK} correct in a row to complete a round.",
+        "fn": stroop_game,
     },
 }
 
@@ -2017,6 +2243,18 @@ elif page == "Doctor":
 
     with st.container(key="card_doctor"):
         doctor_expander()
+
+    if sheets_configured():
+        with st.container(key="card_reveal_patterns"):
+            st.subheader("🔍 Reveal My Patterns")
+            st.caption(
+                "See how your Typing Test and Color Match activity compares to "
+                "your own recent history."
+            )
+            if st.button("Reveal My Patterns", key="reveal_patterns_btn", use_container_width=True):
+                st.session_state.show_patterns = not st.session_state.get("show_patterns", False)
+            if st.session_state.get("show_patterns"):
+                reveal_my_patterns(st.session_state.auth_username)
 
 # ------------------------------
 # Footer

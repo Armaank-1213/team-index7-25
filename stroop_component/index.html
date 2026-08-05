@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: transparent;
+  }
+  .wrap { padding: 6px 2px 10px 2px; text-align: center; }
+  .stimulus {
+    font-size: 2.6rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    margin-bottom: 16px;
+    min-height: 60px;
+  }
+  .choices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    max-width: 320px;
+    margin: 0 auto;
+  }
+  .choice-btn {
+    padding: 14px 8px;
+    border-radius: 12px;
+    border: none;
+    color: white;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+  }
+  .choice-btn:active { transform: scale(0.97); }
+  .hint {
+    margin-top: 10px;
+    font-size: 0.72rem;
+    color: #666C80;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="stimulus" id="stimulus">&nbsp;</div>
+  <div class="choices">
+    <button class="choice-btn" data-color="#E53935" style="background:#E53935;">RED</button>
+    <button class="choice-btn" data-color="#1E88E5" style="background:#1E88E5;">BLUE</button>
+    <button class="choice-btn" data-color="#43A047" style="background:#43A047;">GREEN</button>
+    <button class="choice-btn" data-color="#FDD835" style="background:#FDD835;color:#3A2F00;">YELLOW</button>
+  </div>
+  <div class="hint">Click the color the word is printed in — not the word itself.</div>
+</div>
+
+<script>
+// ------------------------------------------------------------------
+// Stroop task: the word and its ink color deliberately mismatch
+// (e.g. the word "RED" printed in blue). Naming the ink color instead
+// of reading the word is the classic executive-function/attention
+// test — the interference between the two is the whole point.
+//
+// Python picks the word/ink pair each round and passes them in as
+// component args (received via the "streamlit:render" message, same
+// protocol as the value round-trip in keystroke_component). Reaction
+// time is measured from the moment this component receives a *new*
+// word/ink pair to the click, using performance.now() for
+// browser-side precision — a server round trip alone would add
+// hundreds of ms of noise that would swamp real reaction-time
+// differences.
+// ------------------------------------------------------------------
+
+let stimulusTime = null;
+let motionSamples = [];
+let motionListenerAttached = false;
+let currentWord = null;
+let currentInk = null;
+let answered = false;
+
+const stimulusEl = document.getElementById("stimulus");
+const buttons = Array.from(document.querySelectorAll(".choice-btn"));
+
+function attachMotionListener() {
+  if (motionListenerAttached) return;
+  motionListenerAttached = true;
+  window.addEventListener("devicemotion", function (e) {
+    const acc = e.accelerationIncludingGravity;
+    if (acc && acc.x !== null && acc.x !== undefined) {
+      const mag = Math.sqrt((acc.x || 0) ** 2 + (acc.y || 0) ** 2 + (acc.z || 0) ** 2);
+      motionSamples.push(mag);
+    }
+  });
+}
+
+function maybeRequestMotionPermission() {
+  if (typeof DeviceMotionEvent !== "undefined" &&
+      typeof DeviceMotionEvent.requestPermission === "function") {
+    DeviceMotionEvent.requestPermission()
+      .then(function (state) { if (state === "granted") attachMotionListener(); })
+      .catch(function () {});
+  } else if (typeof DeviceMotionEvent !== "undefined") {
+    attachMotionListener();
+  }
+}
+
+function setFrameHeight() {
+  window.parent.postMessage({
+    isStreamlitMessage: true,
+    type: "streamlit:setFrameHeight",
+    height: document.body.scrollHeight + 16,
+  }, "*");
+}
+
+function startRound(word, ink) {
+  currentWord = word;
+  currentInk = ink;
+  answered = false;
+  stimulusEl.textContent = word;
+  stimulusEl.style.color = ink;
+  motionSamples = [];
+  maybeRequestMotionPermission();
+  stimulusTime = performance.now();
+  setFrameHeight();
+}
+
+function sendValue(value) {
+  window.parent.postMessage({
+    isStreamlitMessage: true,
+    type: "streamlit:setComponentValue",
+    value: value,
+    dataType: "json",
+  }, "*");
+}
+
+buttons.forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    if (answered || stimulusTime === null) return;
+    answered = true;
+
+    const reactionMs = performance.now() - stimulusTime;
+    const chosen = btn.getAttribute("data-color");
+    const correct = chosen.toLowerCase() === currentInk.toLowerCase();
+
+    let motionStd = null;
+    if (motionSamples.length > 2) {
+      const avg = motionSamples.reduce((a, b) => a + b, 0) / motionSamples.length;
+      const variance = motionSamples.reduce((a, b) => a + (b - avg) ** 2, 0) / motionSamples.length;
+      motionStd = Math.sqrt(variance);
+    }
+
+    sendValue({
+      word: currentWord,
+      ink_color: currentInk,
+      chosen_color: chosen,
+      correct: correct,
+      reaction_ms: Math.round(reactionMs),
+      motion_samples: motionSamples.length,
+      motion_std: motionStd !== null ? Math.round(motionStd * 1000) / 1000 : null,
+      nonce: Date.now() + "-" + Math.random().toString(36).slice(2),
+    });
+  });
+});
+
+window.addEventListener("message", function (event) {
+  const data = event.data;
+  if (!data || data.type !== "streamlit:render" || !data.args) return;
+  const word = data.args.word;
+  const ink = data.args.ink_color;
+  if (word && ink && (word !== currentWord || ink !== currentInk)) {
+    startRound(word, ink);
+  }
+});
+
+window.parent.postMessage({ isStreamlitMessage: true, type: "streamlit:componentReady", apiVersion: 1 }, "*");
+setFrameHeight();
+setTimeout(setFrameHeight, 50);
+setTimeout(setFrameHeight, 150);
+setTimeout(setFrameHeight, 400);
+new ResizeObserver(setFrameHeight).observe(document.body);
+</script>
+</body>
+</html>
