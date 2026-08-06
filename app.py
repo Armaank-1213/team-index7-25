@@ -2,6 +2,7 @@ import base64
 import hashlib
 import os
 import random
+import threading
 import time
 from datetime import datetime, timezone
 from io import BytesIO
@@ -198,32 +199,51 @@ def log_checkin(username):
         return False
 
 
+def _log_in_background(fn):
+    # Per-attempt game logging happens on every single round (not just
+    # game completion), right in the middle of the click -> next-round
+    # flow. Writing to Sheets synchronously here blocks the script for
+    # the full round-trip (~1-2s even on localhost) with no loading
+    # indicator, which reads as the game freezing. The write doesn't
+    # need to finish before the UI moves on, so it fires in a daemon
+    # thread instead — worst case a write is lost if the process exits
+    # mid-write, which is a far better trade than a frozen-looking game
+    # in front of an audience.
+    threading.Thread(target=fn, daemon=True).start()
+
+
 def log_typing_attempt(username, correct, wpm, accuracy, metrics):
-    try:
-        _typing_worksheet().append_row([
-            username,
-            datetime.now(timezone.utc).isoformat(),
-            correct,
-            wpm,
-            accuracy,
-            metrics.get("avg_interval_ms"),
-            metrics.get("interval_std_ms"),
-            metrics.get("backspaces"),
-            metrics.get("motion_std"),
-        ])
-    except Exception:
-        pass
+    def _write():
+        try:
+            _typing_worksheet().append_row([
+                username,
+                datetime.now(timezone.utc).isoformat(),
+                correct,
+                wpm,
+                accuracy,
+                metrics.get("avg_interval_ms"),
+                metrics.get("interval_std_ms"),
+                metrics.get("backspaces"),
+                metrics.get("motion_std"),
+            ])
+        except Exception:
+            pass
+
+    _log_in_background(_write)
 
 
 def log_stroop_attempt(username, word, ink_color, chosen_color, correct, reaction_ms, motion_std):
-    try:
-        _stroop_worksheet().append_row([
-            username,
-            datetime.now(timezone.utc).isoformat(),
-            word, ink_color, chosen_color, correct, reaction_ms, motion_std,
-        ])
-    except Exception:
-        pass
+    def _write():
+        try:
+            _stroop_worksheet().append_row([
+                username,
+                datetime.now(timezone.utc).isoformat(),
+                word, ink_color, chosen_color, correct, reaction_ms, motion_std,
+            ])
+        except Exception:
+            pass
+
+    _log_in_background(_write)
 
 
 def get_routine_items(username):
@@ -616,12 +636,18 @@ div[class*="st-key-mm_grid_container"] .stButton > button:hover {
     border-color: #4895EF;
 }
 
-/* Active flipped card */
+/* Active flipped card. Background/border are non-inherited CSS
+   properties, so — unlike color/font-size above — they must only be
+   set on the button itself; applying them to `* ` as well draws a
+   second, smaller box around the inner wrapper divs. */
+div[class*="st-key-mm_grid_container"] button[kind="primary"] {
+    background: #FFF4DA !important;
+    border: 2px solid #F5A623 !important;
+}
+
 div[class*="st-key-mm_grid_container"] button[kind="primary"],
 div[class*="st-key-mm_grid_container"] button[kind="primary"] * {
-    background: #FFF4DA !important;
     color: #8A5B00 !important;
-    border: 2px solid #F5A623 !important;
 }
 
 /* Disabled matched cards */
@@ -1015,9 +1041,13 @@ if not st.session_state.auth_username:
                         if taken:
                             st.error("That username is already taken.")
                         else:
-                            create_user(signup_username, signup_password)
-                            st.session_state.auth_username = signup_username.strip()
-                            st.rerun()
+                            try:
+                                create_user(signup_username, signup_password)
+                            except Exception as e:
+                                st.error(f"Couldn't reach Google Sheets: {e}")
+                            else:
+                                st.session_state.auth_username = signup_username.strip()
+                                st.rerun()
 
     st.stop()
 
@@ -1627,11 +1657,14 @@ def word_scramble_game():
         st.error(f"Not quite — the word was {fb.split(':', 1)[1]}.")
 
     st.markdown(f"### Unscramble: **{st.session_state.ws_scrambled}**")
-    st.text_input(
-        "Your guess", key="ws_guess", label_visibility="collapsed",
-        placeholder="Type the word...",
-    )
-    st.button("Submit Guess", key="ws_submit", on_click=submit_word_guess, use_container_width=True)
+    with st.form(key="ws_form", border=False):
+        st.text_input(
+            "Your guess", key="ws_guess", label_visibility="collapsed",
+            placeholder="Type the word...",
+        )
+        st.form_submit_button(
+            "Submit Guess", on_click=submit_word_guess, use_container_width=True
+        )
 
     if st.session_state.ws_streak >= WORD_WIN_STREAK:
         if st.session_state.get("ws_just_completed"):
@@ -2073,11 +2106,11 @@ def routine_maker(username):
             if not group:
                 continue
             st.markdown(f"**{time_label}**")
-            for it in group:
+            for idx, it in enumerate(group):
                 c1, c2 = st.columns([5, 1])
                 c1.write(f"• {it.get('item')}")
                 if c2.button(
-                    "✕", key=f"del_routine_{time_label}_{it.get('item')}",
+                    "✕", key=f"del_routine_{time_label}_{idx}",
                     use_container_width=True,
                 ):
                     delete_routine_item(username, it.get("item"), time_label)
