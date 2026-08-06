@@ -419,7 +419,7 @@ st.markdown("""
     --indigo: #3F37C9;
     --indigo-light: #4895EF;
     --amber: #F5A623;
-    --bg: #F5F6FB;
+    --bg: linear-gradient(135deg, #E9F2FD 0%, #EBE2F5 100%);
     --card-bg: #FFFFFF;
     --border: #E5E7F2;
     --text-primary: #1B1F30;
