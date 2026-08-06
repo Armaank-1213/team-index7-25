@@ -438,6 +438,13 @@ footer {visibility: hidden;}
     background: var(--bg);
 }
 
+/* The top toolbar (Share/GitHub/deploy icons) sits inside .stApp but
+   ships with its own solid theme-background fill, which otherwise cuts
+   a flat bar across the gradient right at the top of the page. */
+header[data-testid="stHeader"] {
+    background: transparent;
+}
+
 .block-container {
     max-width: 1400px;
     padding-top: 1.75rem;
