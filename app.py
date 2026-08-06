@@ -795,21 +795,29 @@ div[class*="st-key-game_picker_container"] div[role="radiogroup"] label > div:fi
 /* ---------- Text inputs (login/signup and elsewhere) ----------
    Default Streamlit text inputs have no visible border until
    focused, so on the login screen they look like empty space until
-   you click in. Give them a visible blue border/background always,
-   not just on hover or focus. */
-div[data-testid="stTextInput"] input {
+   you click in. The visible border/background has to go on
+   stTextInputRootElement (Streamlit's own wrapper), not the <input>
+   itself — that wrapper already draws its own (usually invisible)
+   border and a different border-radius, so styling the inner input
+   too created two mismatched nested boxes. */
+div[data-testid="stTextInputRootElement"] {
     border: 1.5px solid var(--indigo-light) !important;
     border-radius: 10px !important;
     background: #F9FAFF !important;
 }
 
-div[data-testid="stTextInput"] input:hover {
+div[data-testid="stTextInputRootElement"]:hover {
     border-color: var(--indigo) !important;
 }
 
-div[data-testid="stTextInput"] input:focus {
+div[data-testid="stTextInputRootElement"]:focus-within {
     border-color: var(--indigo) !important;
     box-shadow: 0 0 0 2px rgba(72,149,239,0.25) !important;
+}
+
+div[data-testid="stTextInput"] input {
+    background: transparent !important;
+    border: none !important;
 }
 
 </style>
