@@ -143,6 +143,13 @@ def _stroop_worksheet():
     )
 
 
+def _routines_worksheet():
+    return _get_or_create_worksheet(
+        "Routines",
+        ["username", "item", "time_of_day", "created_at"],
+    )
+
+
 def hash_password(password, salt=None):
     salt = salt or os.urandom(16).hex()
     digest = hashlib.pbkdf2_hmac(
@@ -219,6 +226,37 @@ def log_stroop_attempt(username, word, ink_color, chosen_color, correct, reactio
         pass
 
 
+def get_routine_items(username):
+    try:
+        rows = _routines_worksheet().get_all_records()
+    except Exception:
+        return None
+    return [r for r in rows if r.get("username") == username]
+
+
+def add_routine_item(username, item, time_of_day):
+    try:
+        _routines_worksheet().append_row([
+            username, item, time_of_day, datetime.now(timezone.utc).isoformat(),
+        ])
+        return True
+    except Exception:
+        return False
+
+
+def delete_routine_item(username, item, time_of_day):
+    try:
+        ws = _routines_worksheet()
+        for cell in ws.findall(item):
+            row = ws.row_values(cell.row)
+            if len(row) >= 3 and row[0] == username and row[2] == time_of_day:
+                ws.delete_rows(cell.row)
+                return True
+        return False
+    except Exception:
+        return False
+
+
 def _recent_rows(worksheet_fn, username, limit=10):
     rows = [r for r in worksheet_fn().get_all_records() if r.get("username") == username]
     return rows[-limit:] if rows else []
@@ -286,6 +324,48 @@ def reveal_my_patterns(username):
             st.caption("First attempt logged — play a few more rounds to see how it compares.")
 
 
+def suggest_game():
+    # Only Typing and Stroop have per-attempt history logged today, so
+    # a suggestion can only meaningfully compare those two. Whichever
+    # has the lower recent accuracy gets suggested — no suggestion at
+    # all once both are doing fine, so this doesn't nag.
+    username = st.session_state.get("auth_username")
+    if not (sheets_configured() and username):
+        return None
+
+    try:
+        typing_rows = _recent_rows(_typing_worksheet, username)
+        stroop_rows = _recent_rows(_stroop_worksheet, username)
+    except Exception:
+        return None
+
+    candidates = []
+    if typing_rows:
+        accs = [float(r["accuracy"]) for r in typing_rows if r.get("accuracy") not in (None, "")]
+        if accs:
+            candidates.append(("typing", sum(accs) / len(accs)))
+    if stroop_rows:
+        correct = sum(1 for r in stroop_rows if str(r.get("correct")).upper() == "TRUE")
+        candidates.append(("stroop", correct / len(stroop_rows) * 100))
+
+    if not candidates:
+        return None
+
+    weakest_key, weakest_acc = min(candidates, key=lambda c: c[1])
+    if weakest_acc >= 85:
+        return None
+
+    label = "Typing Test" if weakest_key == "typing" else "Color Match"
+    return {
+        "key": weakest_key,
+        "label": GAME_REGISTRY[weakest_key]["label"],
+        "reason": (
+            f"Your recent {label} accuracy has been around {weakest_acc:.0f}% — "
+            "a few more rounds could help."
+        ),
+    }
+
+
 # ------------------------------
 # Logo icon (head/lighthouse mark only, cropped from the full logo,
 # embedded directly so app.py is fully self-contained)
@@ -311,7 +391,7 @@ st.set_page_config(
 # ------------------------------
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
     --navy: #560BAD;
@@ -327,7 +407,8 @@ st.markdown("""
 }
 
 html, body, [class*="css"] {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 17px;
 }
 
 #MainMenu {visibility: hidden;}
@@ -338,7 +419,7 @@ footer {visibility: hidden;}
 }
 
 .block-container {
-    max-width: 1120px;
+    max-width: 1400px;
     padding-top: 1.75rem;
     padding-bottom: 3rem;
 }
@@ -357,6 +438,12 @@ h2, h3 {
 
 p, span, label, .stMarkdown {
     color: var(--text-primary);
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+[data-testid="stCaptionContainer"], .stCaption {
+    font-size: 0.88rem !important;
 }
 
 
@@ -889,12 +976,15 @@ if not st.session_state.auth_username:
             signup_password = st.text_input(
                 "Choose a password", type="password", key="signup_password"
             )
+            st.caption("At least 8 characters.")
             signup_password_confirm = st.text_input(
                 "Confirm password", type="password", key="signup_password_confirm"
             )
             if st.button("Sign Up", key="signup_submit", use_container_width=True):
                 if not signup_username.strip() or not signup_password:
                     st.error("Username and password are required.")
+                elif len(signup_password) < 8:
+                    st.error("Password must be at least 8 characters.")
                 elif signup_password != signup_password_confirm:
                     st.error("Passwords don't match.")
                 else:
@@ -979,6 +1069,19 @@ def award_game_completion():
     )
 
 
+def save_checkin_and_clear():
+    # Must run as a widget on_click callback, same reason as go_to():
+    # these check-in values are all widget-bound keys, so they can
+    # only be reassigned before the widgets re-instantiate on the next
+    # run, not inline after a normal button click.
+    if log_checkin(st.session_state.auth_username):
+        st.session_state.checkin_save_status = "success"
+        for _k, _v in CHECKIN_DEFAULTS.items():
+            st.session_state[_k] = _v
+    else:
+        st.session_state.checkin_save_status = "error"
+
+
 def checkin_bar():
     with st.container(key="card_checkin_bar"):
         st.subheader("Today's Check-In")
@@ -1005,11 +1108,17 @@ def checkin_bar():
             st.checkbox("Drank enough water", key="water")
 
         if sheets_configured():
-            if st.button("💾 Save Today's Check-In", key="save_checkin", use_container_width=True):
-                if log_checkin(st.session_state.auth_username):
-                    st.success("Saved to your account.")
-                else:
-                    st.error("Couldn't save — check the Google Sheets connection.")
+            st.button(
+                "💾 Save Today's Check-In", key="save_checkin",
+                on_click=save_checkin_and_clear, use_container_width=True,
+            )
+            status = st.session_state.get("checkin_save_status")
+            if status == "success":
+                st.success("Saved to your account — inputs reset for your next check-in.")
+            elif status == "error":
+                st.error("Couldn't save — check the Google Sheets connection.")
+            if status:
+                st.session_state.checkin_save_status = None
 
 
 steps = st.session_state.steps
@@ -1587,11 +1696,14 @@ def number_recall_game():
         return
 
     st.markdown("### Enter the sequence you saw:")
-    st.text_input(
-        "Your answer", key="nr_guess", label_visibility="collapsed",
-        placeholder="e.g. 4729",
-    )
-    st.button("Submit", key="nr_submit", on_click=submit_number_guess, use_container_width=True)
+    with st.form(key="nr_form", border=False):
+        st.text_input(
+            "Your answer", key="nr_guess", label_visibility="collapsed",
+            placeholder="e.g. 4729",
+        )
+        st.form_submit_button(
+            "Submit", on_click=submit_number_guess, use_container_width=True
+        )
 
     if st.session_state.get("nr_just_completed"):
         st.balloons()
@@ -1635,6 +1747,28 @@ def new_typing_game():
     new_typing_phrase()
 
 
+def _edit_distance(a, b):
+    # Standard Levenshtein DP. Used instead of a position-by-position
+    # compare for typing accuracy: a single missed/extra character
+    # shifts every character after it out of alignment under a plain
+    # zip() comparison, so one typo reads as "everything after this
+    # point is wrong" instead of "one mistake".
+    if a == b:
+        return 0
+    prev_row = list(range(len(b) + 1))
+    for i, ca in enumerate(a, start=1):
+        cur_row = [i] + [0] * len(b)
+        for j, cb in enumerate(b, start=1):
+            cost = 0 if ca == cb else 1
+            cur_row[j] = min(
+                prev_row[j] + 1,        # deletion
+                cur_row[j - 1] + 1,     # insertion
+                prev_row[j - 1] + cost,  # substitution
+            )
+        prev_row = cur_row
+    return prev_row[-1]
+
+
 def process_typing_result(result):
     typed = (result.get("typed") or "").strip().lower()
     target = st.session_state.tt_phrase
@@ -1643,8 +1777,9 @@ def process_typing_result(result):
     minutes = max(total_ms, 1) / 60000
     wpm = round(len(target.split()) / minutes) if minutes > 0 else 0
 
-    matches = sum(1 for a, b in zip(typed, target) if a == b)
-    accuracy = round((matches / len(target)) * 100) if target else 0
+    distance = _edit_distance(typed, target)
+    accuracy = round((1 - distance / max(len(typed), len(target), 1)) * 100) if target else 0
+    accuracy = max(accuracy, 0)
 
     st.session_state.tt_last_metrics = {
         "avg_interval_ms": result.get("avg_interval_ms") or 0,
@@ -1887,6 +2022,51 @@ def reroll_game():
     st.session_state.active_game = pick_random_game(exclude=st.session_state.get("active_game"))
 
 
+# ------------------------------
+# Routine Maker/Scheduler — a simple per-user checklist of routine
+# items grouped by time of day, persisted to Sheets. Not a real
+# calendar/reminder system (no notifications) — just a durable list
+# so daily habits don't have to live in the user's head.
+# ------------------------------
+ROUTINE_TIMES = ["Morning", "Afternoon", "Evening", "Night"]
+
+
+def routine_maker(username):
+    items = get_routine_items(username)
+    if items is None:
+        st.error("Couldn't reach Google Sheets.")
+        return
+
+    if items:
+        for time_label in ROUTINE_TIMES:
+            group = [it for it in items if it.get("time_of_day") == time_label]
+            if not group:
+                continue
+            st.markdown(f"**{time_label}**")
+            for it in group:
+                c1, c2 = st.columns([5, 1])
+                c1.write(f"• {it.get('item')}")
+                if c2.button(
+                    "✕", key=f"del_routine_{time_label}_{it.get('item')}",
+                    use_container_width=True,
+                ):
+                    delete_routine_item(username, it.get("item"), time_label)
+                    st.rerun()
+    else:
+        st.caption("No routine items yet — add your first one below.")
+
+    with st.form(key="add_routine_form", border=False, clear_on_submit=True):
+        c1, c2, c3 = st.columns([3, 2, 1])
+        new_item = c1.text_input(
+            "Routine item", label_visibility="collapsed", placeholder="e.g. Morning walk"
+        )
+        new_time = c2.selectbox("Time of day", ROUTINE_TIMES, label_visibility="collapsed")
+        submitted = c3.form_submit_button("Add", use_container_width=True)
+        if submitted and new_item.strip():
+            add_routine_item(username, new_item.strip(), new_time)
+            st.rerun()
+
+
 def brain_game_panel():
     if "active_game" not in st.session_state:
         st.session_state.active_game = pick_random_game()
@@ -1972,8 +2152,11 @@ if page == "Dashboard":
             "stimulating activities can help support long-term cognitive health."
         )
 
-    with st.container(key="card_dash_doctor"):
-        doctor_expander()
+    if sheets_configured():
+        with st.container(key="card_dash_routine"):
+            st.subheader("📅 My Routine")
+            st.caption("A simple checklist for the habits you're trying to build.")
+            routine_maker(st.session_state.auth_username)
 
     with st.container(key="card_dash_about"):
         st.subheader("About Clariti")
@@ -2256,6 +2439,16 @@ elif page == "Brain Games":
             "**Tip:** Mentally stimulating activities like puzzles, memory games, "
             "and reading may help keep your brain sharp over time."
         )
+
+    suggestion = suggest_game()
+    if suggestion:
+        with st.container(key="card_games_suggestion"):
+            st.markdown(f"💡 **Suggested for you: {suggestion['label']}**")
+            st.caption(suggestion["reason"])
+            if st.button("Play it", key="play_suggested_game", use_container_width=True):
+                st.session_state.brain_game_choice_saved = suggestion["key"]
+                st.session_state.brain_game_choice = suggestion["key"]
+                st.rerun()
 
     with st.container(key="card_games_picker"):
         st.subheader("Choose a Game")
