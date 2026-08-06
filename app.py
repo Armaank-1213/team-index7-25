@@ -556,10 +556,21 @@ div[class*="st-key-card_"] {
 .stButton > button,
 .stButton > button * {
     color: white !important;
+    font-size: 1rem !important;
 }
 
 .stButton > button:hover {
     background: var(--indigo-light);
+}
+
+/* Streamlit renders widget labels (selectbox/radio/slider captions like
+   "Steps Walked") and button text through its own inner <p>/<span> that
+   carries a fixed 0.875rem from Streamlit's own styling — inheritance
+   loses to that explicit rule no matter what font-size we set on the
+   outer element, so both have to be targeted directly with !important. */
+[data-testid="stWidgetLabel"],
+[data-testid="stWidgetLabel"] p {
+    font-size: 1rem !important;
 }
 
 button[kind="primary"] {
@@ -585,9 +596,8 @@ div[data-testid="stMetric"] {
 
 /* ---------- Memory Game Cards ---------- */
 div[class*="st-key-mm_grid_container"] .stButton > button {
-    font-size: 2.3rem;
-    min-height: 96px;
-    height: 96px;
+    min-height: 108px;
+    height: 108px;
     border-radius: 14px;
     background: #FFFFFF;
     border: 2px solid #E5E7F2;
@@ -598,6 +608,7 @@ div[class*="st-key-mm_grid_container"] .stButton > button {
 div[class*="st-key-mm_grid_container"] .stButton > button,
 div[class*="st-key-mm_grid_container"] .stButton > button * {
     color: #1B1F30 !important;
+    font-size: 3.2rem !important;
 }
 
 div[class*="st-key-mm_grid_container"] .stButton > button:hover {
