@@ -452,13 +452,23 @@ div[class*="st-key-card_"] {
 }
 
 
-/* ---------- Buttons ---------- */
+/* ---------- Buttons ----------
+   Streamlit's theme applies text color directly to the button's
+   inner <p> tag, which beats a color set on the <button> itself
+   (inheritance loses to any explicit rule, regardless of !important
+   on our side) — so every color here also has to target that inner
+   element explicitly, with !important, or it silently renders as the
+   theme's dark text color on our dark button backgrounds. */
 .stButton > button {
     background: var(--indigo);
-    color: white;
     border: none;
     border-radius: 10px;
     font-weight: 600;
+}
+
+.stButton > button,
+.stButton > button * {
+    color: white !important;
 }
 
 .stButton > button:hover {
@@ -493,10 +503,14 @@ div[class*="st-key-mm_grid_container"] .stButton > button {
     height: 96px;
     border-radius: 14px;
     background: #FFFFFF;
-    color: #1B1F30;
     border: 2px solid #E5E7F2;
     box-shadow: 0 2px 5px rgba(16,24,64,0.08);
     font-weight: 700;
+}
+
+div[class*="st-key-mm_grid_container"] .stButton > button,
+div[class*="st-key-mm_grid_container"] .stButton > button * {
+    color: #1B1F30 !important;
 }
 
 div[class*="st-key-mm_grid_container"] .stButton > button:hover {
@@ -505,7 +519,8 @@ div[class*="st-key-mm_grid_container"] .stButton > button:hover {
 }
 
 /* Active flipped card */
-div[class*="st-key-mm_grid_container"] button[kind="primary"] {
+div[class*="st-key-mm_grid_container"] button[kind="primary"],
+div[class*="st-key-mm_grid_container"] button[kind="primary"] * {
     background: #FFF4DA !important;
     color: #8A5B00 !important;
     border: 2px solid #F5A623 !important;
@@ -603,16 +618,28 @@ div[class*="st-key-metric_link"] .stButton > button {
     width: 100%;
     text-align: left;
     background: #F9FAFF;
-    color: var(--text-primary);
     border: 1px solid var(--border);
     font-weight: 600;
     border-radius: 10px;
 }
 
+div[class*="st-key-goal_btn"] .stButton > button,
+div[class*="st-key-metric_link"] .stButton > button,
+div[class*="st-key-goal_btn"] .stButton > button *,
+div[class*="st-key-metric_link"] .stButton > button * {
+    color: var(--text-primary) !important;
+}
+
+div[class*="st-key-goal_btn"] .stButton > button:hover,
+div[class*="st-key-metric_link"] .stButton > button:hover,
+div[class*="st-key-goal_btn"] .stButton > button:hover *,
+div[class*="st-key-metric_link"] .stButton > button:hover * {
+    color: var(--indigo) !important;
+}
+
 div[class*="st-key-goal_btn"] .stButton > button:hover,
 div[class*="st-key-metric_link"] .stButton > button:hover {
     border-color: var(--indigo-light);
-    color: var(--indigo);
     background: #F1F1FC;
 }
 
