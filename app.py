@@ -1883,10 +1883,22 @@ STROOP_COLORS = [
 
 
 def new_stroop_round():
-    word, _ = random.choice(STROOP_COLORS)
-    # Ink color must differ from the word's own meaning — that
-    # mismatch is the whole point of a Stroop trial.
-    _, ink_color = random.choice([c for c in STROOP_COLORS if c[0] != word])
+    # The component only knows a new round has started when the
+    # word/ink pair it receives actually changes (that's how it
+    # resets its "already answered" guard) — with only 4 colors there
+    # are just 12 valid (word, ink) pairs, so picking one that happens
+    # to match the previous round is common enough to hit in normal
+    # play. When it does, the component never sees a change and stays
+    # permanently stuck refusing clicks. Exclude the previous pair so
+    # every round is guaranteed to actually be new.
+    previous = (st.session_state.get("sg_word"), st.session_state.get("sg_ink_color"))
+    while True:
+        word, _ = random.choice(STROOP_COLORS)
+        # Ink color must differ from the word's own meaning — that
+        # mismatch is the whole point of a Stroop trial.
+        _, ink_color = random.choice([c for c in STROOP_COLORS if c[0] != word])
+        if (word, ink_color) != previous:
+            break
     st.session_state.sg_word = word
     st.session_state.sg_ink_color = ink_color
 
