@@ -1101,15 +1101,23 @@ with st.container(key="nav_container"):
 # edited them.
 # ------------------------------
 CHECKIN_DEFAULTS = {
-    "steps": 6000,
-    "exercise_minutes": 30,
-    "sleep_hours": 8.0,
-    "meditation_minutes": 5,
-    "games": 1,
+    "steps": None,
+    "exercise_minutes": None,
+    "sleep_hours": None,
+    "meditation_minutes": None,
+    "games": None,
     "water": False,
 }
 for _key, _default in CHECKIN_DEFAULTS.items():
     st.session_state.setdefault(_key, _default)
+
+# Separate from the check-in "Brain Games" dropdown above (a
+# self-reported, freely-editable number) — this is an internal
+# auto-incrementing counter of games actually finished, bumped by
+# award_game_completion(). The two used to share one session_state
+# key, which meant editing the check-in dropdown silently overwrote
+# the real completion count and vice versa.
+st.session_state.setdefault("games_completed", 0)
 
 STEP_OPTIONS = [0, 2000, 4000, 6000, 8000, 10000, 12000, 15000, 20000]
 EXERCISE_OPTIONS = [0, 10, 15, 20, 30, 45, 60, 90, 120]
@@ -1119,8 +1127,8 @@ GAMES_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 
 def award_game_completion():
-    st.session_state.games = min(
-        st.session_state.get("games", 0) + 1, max(GAMES_OPTIONS)
+    st.session_state.games_completed = min(
+        st.session_state.get("games_completed", 0) + 1, max(GAMES_OPTIONS)
     )
 
 
@@ -1146,17 +1154,29 @@ def checkin_bar():
 
         with c1:
             st.selectbox(
-                "Steps Walked", STEP_OPTIONS, key="steps",
-                format_func=lambda v: f"{v:,}"
+                "Steps Walked", STEP_OPTIONS, key="steps", index=None,
+                placeholder="Not logged", format_func=lambda v: f"{v:,}"
             )
         with c2:
-            st.selectbox("Exercise (min)", EXERCISE_OPTIONS, key="exercise_minutes")
+            st.selectbox(
+                "Exercise (min)", EXERCISE_OPTIONS, key="exercise_minutes",
+                index=None, placeholder="Not logged",
+            )
         with c3:
-            st.selectbox("Hours Slept", SLEEP_OPTIONS, key="sleep_hours")
+            st.selectbox(
+                "Hours Slept", SLEEP_OPTIONS, key="sleep_hours",
+                index=None, placeholder="Not logged",
+            )
         with c4:
-            st.selectbox("Meditation (min)", MEDITATION_OPTIONS, key="meditation_minutes")
+            st.selectbox(
+                "Meditation (min)", MEDITATION_OPTIONS, key="meditation_minutes",
+                index=None, placeholder="Not logged",
+            )
         with c5:
-            st.selectbox("Brain Games", GAMES_OPTIONS, key="games")
+            st.selectbox(
+                "Brain Games", GAMES_OPTIONS, key="games",
+                index=None, placeholder="Not logged",
+            )
         with c6:
             st.write("")
             st.write("")
@@ -1176,11 +1196,15 @@ def checkin_bar():
                 st.session_state.checkin_save_status = None
 
 
-steps = st.session_state.steps
-exercise_minutes = st.session_state.exercise_minutes
-sleep_hours = st.session_state.sleep_hours
-meditation_minutes = st.session_state.meditation_minutes
-games = st.session_state.games
+steps = st.session_state.steps if st.session_state.steps is not None else 0
+exercise_minutes = (
+    st.session_state.exercise_minutes if st.session_state.exercise_minutes is not None else 0
+)
+sleep_hours = st.session_state.sleep_hours if st.session_state.sleep_hours is not None else 0
+meditation_minutes = (
+    st.session_state.meditation_minutes if st.session_state.meditation_minutes is not None else 0
+)
+games_completed = st.session_state.games_completed
 water = st.session_state.water
 
 # ------------------------------
@@ -1200,7 +1224,7 @@ if sleep_hours >= 8:
 if meditation_minutes >= 10:
     score += 15
 
-if games >= 1:
+if games_completed >= 1:
     score += 15
 
 if water:
@@ -1265,7 +1289,7 @@ def goal_checklist():
         ("Exercise 30 Minutes", exercise_minutes >= 30, "Exercise"),
         ("Sleep 8 Hours", sleep_hours >= 8, "Sleep"),
         ("Meditate 10 Minutes", meditation_minutes >= 10, "Meditation"),
-        ("Complete a Brain Game", games >= 1, "Brain Games"),
+        ("Complete a Brain Game", games_completed >= 1, "Brain Games"),
         ("Drink Enough Water", water, None),
     ]
 
@@ -2187,7 +2211,7 @@ if page == "Dashboard":
                 )
 
         with col3:
-            st.metric("Games", games)
+            st.metric("Games", games_completed)
             with st.container(key="metric_link_games"):
                 st.button(
                     "Play a Game →", key="metric_click_games",
@@ -2503,8 +2527,8 @@ elif page == "Meditation":
 elif page == "Brain Games":
     with st.container(key="card_games_summary"):
         st.subheader("Brain Games")
-        st.metric("Games Completed", games)
-        st.checkbox("Complete a Brain Game", value=games >= 1, disabled=True)
+        st.metric("Games Completed", games_completed)
+        st.checkbox("Complete a Brain Game", value=games_completed >= 1, disabled=True)
         st.info(
             "**Tip:** Mentally stimulating activities like puzzles, memory games, "
             "and reading may help keep your brain sharp over time."
