@@ -907,6 +907,13 @@ div[data-testid="stTextInput"] input {
     border: none !important;
 }
 
+/* Streamlit shows "Press Enter to apply"/"Press Enter to submit form"
+   under any text input with uncommitted changes — login, signup, game
+   guess boxes, the routine adder, all of it. Just noise here. */
+div[data-testid="InputInstructions"] {
+    display: none !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
